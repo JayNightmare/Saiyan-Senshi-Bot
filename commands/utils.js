@@ -1,8 +1,8 @@
-const { MessageEmbed } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { MilestoneLevel, Server, User } = require('../models/models.js');
 
 function createEmbed(title, description, color) {
-    return new MessageEmbed()
+    return new EmbedBuilder()
         .setTitle(title)
         .setDescription(description)
         .setColor(color);
@@ -82,6 +82,7 @@ module.exports = {
     // User Data
     getUserData,
     getUserCount,
+    updateUserBio,
 
     // Server Data
     getServerData

@@ -6,6 +6,7 @@ const User = sequelize.define('User', {
     id: {
         type: DataTypes.STRING,
         primaryKey: true,
+        unique: true,
     },
     username: {
         type: DataTypes.STRING,
@@ -27,6 +28,10 @@ const User = sequelize.define('User', {
         type: DataTypes.INTEGER,
         defaultValue: 0,
     },
+    warnings: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+    }
 });
 
 // Punishment Model: Logging bans, warnings, and timeouts
@@ -62,15 +67,27 @@ const Server = sequelize.define('Server', {
     },
     textChannelId: {
         type: DataTypes.STRING,
-        allowNull: true // This can be null if not yet set
+        allowNull: true 
     },
     loggingChannelId: {
         type: DataTypes.STRING,
-        allowNull: true // This can be null if not yet set
+        allowNull: true 
+    },
+    welcomeChannelId: {
+        type: DataTypes.STRING,
+        allowNull: true
     },
     logLevel: {
         type: DataTypes.STRING, // This will store "low", "medium", or "high"
         defaultValue: 'low' // Default to low level logging
+    },
+    mute_role_level_1_id: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    mute_role_level_2_id: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 });
 

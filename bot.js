@@ -40,6 +40,7 @@ for (const file of eventFiles) {
 // Load Files
 const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
+const configCommands = require('./commands/config_commands/configs_commands.js');
 
 // Load Commands
 const commands = [
@@ -52,6 +53,15 @@ const commands = [
                 .setDescription('The user to view stats for')
                 .setRequired(false)
         ),
+
+    new SlashCommandBuilder()
+        .setName('setbio')
+        .setDescription('Set your bio.')
+        .addStringOption(option =>
+            option.setName('bio')
+                .setDescription('Your new bio')
+                .setRequired(true)
+    ),
 
     // //
 
@@ -87,7 +97,24 @@ const commands = [
     // //
 
     new SlashCommandBuilder()
-        .setName('mod-warning')
+        .setName('mod-kick')
+        .setDescription('Kick a user from the server.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.KickMembers)
+        .addUserOption(option =>
+            option.setName('user')
+                .setDescription('The user to kick')
+                .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('reason')
+                .setDescription('The reason for kicking the user')
+                .setRequired(false)
+    ),
+
+    // //
+
+    new SlashCommandBuilder()
+        .setName('mod-warn')
         .setDescription('Warn a user in the server.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
@@ -113,7 +140,7 @@ const commands = [
     // // 
 
     new SlashCommandBuilder()
-        .setName('timeout')
+        .setName('mod-timeout')
         .setDescription('Timeout a user for a specified duration.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
@@ -127,28 +154,13 @@ const commands = [
         .addStringOption(option =>
             option.setName('reason')
                 .setDescription('The reason for the timeout')
-                .setRequired(true)
-    ),
-
-    new SlashCommandBuilder()
-        .setName('remove-timeout')
-        .setDescription('Remove timeout from a user.')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
-        .addUserOption(option =>
-            option.setName('user')
-                .setDescription('The user whose profile you want to view')
-                .setRequired(true)
-        )
-        .addStringOption(option =>
-            option.setName('reason')
-                .setDescription('The reason for removing the timeout')
-                .setRequired(true)
+                .setRequired(false)
     ),
 
     // //
 
     new SlashCommandBuilder()
-        .setName('mute')
+        .setName('mod-mute')
         .setDescription('Mute a user in the server.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
@@ -157,16 +169,20 @@ const commands = [
                 .setRequired(true))
         .addIntegerOption(option =>
             option.setName('duration')
-            .setDescription('The duration of the timeout (e.g., 10m, 1h, 1d)')
+            .setDescription('The duration of the timeout (10 = 10 minutes || 120 = 2 hours)')
+            .setRequired(true))
+        .addIntegerOption(option =>
+            option.setName('level')
+            .setDescription('The level of the mute (1 - No Talk, Can See || 2 - No Talk, No See)')
             .setRequired(true))
         .addStringOption(option =>
             option.setName('reason')
                 .setDescription('The reason for the mute')
-                .setRequired(true)
+                .setRequired(false)
         ),
     
     new SlashCommandBuilder()
-        .setName('unmute')
+        .setName('mod-unmute')
         .setDescription('Unmute a user in the server.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
@@ -177,7 +193,7 @@ const commands = [
         .addStringOption(option =>
             option.setName('reason')
                 .setDescription('The reason for the unmute')
-                .setRequired(true)
+                .setRequired(false)
         ),
 
     // //
@@ -186,12 +202,30 @@ const commands = [
         .setName('setup-mute-role')
         .setDescription('Setup a mute role for the server.')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
-        .addRoleOption(option =>
-            option.setName('role')
-                .setDescription('The mute role')
+    ,
+
+    new SlashCommandBuilder()
+        .setName('setup-logging-channel')
+        .setDescription('Setup a logging channel for the server.')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.BANMembers)
+        .addChannelOption(option =>
+            option.setName('channel')
+                .setDescription('The channel to send logs to')
+                .setRequired(false)
+        ),  
+        
+    // //
+
+    new SlashCommandBuilder()
+        .setName('setup-welcome-channel')
+        .setDescription('Sets the channel for welcoming new members.')
+        .addChannelOption(option =>
+            option.setName('channel')
+                .setDescription('The channel to send welcome messages')
                 .setRequired(true)
         ),
     
+    // //
 ].map(command => command.toJSON());
 
 client.once('ready', async () => {
@@ -202,6 +236,31 @@ client.once('ready', async () => {
 
         // Fetch all guilds the bot is in
         const guilds = await client.guilds.fetch();
+
+        for (const guild of guilds.values()) {
+            try {
+                // Check if the guild is already in the database
+                const [server, created] = await Server.findOrCreate({
+                    where: { serverId: guild.id },
+                    defaults: {
+                        serverId: guild.id,
+                        textChannelId: null,
+                        loggingChannelId: null,
+                        logLevel: 'low',
+                        mute_role_level_1_id: null,
+                        mute_role_level_2_id: null
+                    }
+                });
+    
+                if (created) {
+                    console.log(`Added new server to database: ${guild.name} (${guild.id})`);
+                } else {
+                    console.log(`Server already exists in database: ${guild.name} (${guild.id})`);
+                }
+            } catch (error) {
+                console.error(`Error adding guild to database: ${guild.name} (${guild.id})`, error);
+            }
+        }
 
         guilds.forEach(async (guild) => {
             try {
@@ -222,28 +281,61 @@ client.once('ready', async () => {
     }
 });
 
+client.on('guildMemberAdd', async (member) => {
+    // Fetch the server entry to get the welcome channel ID
+    const server = await Servers.findOne({ where: { serverId: member.guild.id } });
+    if (!server?.welcomeChannelId) return; // No welcome channel set
+
+    // Get the welcome channel
+    const welcomeChannel = member.guild.channels.cache.get(server.welcomeChannelId);
+    if (!welcomeChannel || welcomeChannel.type !== 0) return;
+
+    // Build the welcome message based on your reference
+    const welcomeEmbed = new EmbedBuilder()
+        .setTitle(`Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku and Sailor Moon.`)
+        .setDescription(`We now have ${member.guild.memberCount} warriors to join the fight! But are you a Saiyan, a Senshi, or both?\n\n${member.user} -sama, please select your roles to identify your training grounds, your identification, and other things Goku and Usagi will need to know (they are a bit clueless).`)
+        .setColor(0x008080)
+        .setImage('https://tenor.com/en-GB/view/kids-goku-peace-cool-shades-son-goku-gif-16874131.gif')
+        .setFooter({ text: `Welcome to ${member.guild.name}` });
+
+    // Send the message in the welcome channel
+    try {
+        await welcomeChannel.send({ content: `Yayyy! ${member} has joined the server!`, embeds: [welcomeEmbed] });
+    } catch (err) {
+        console.error('Error sending welcome message:', err);
+    }
+});
+
+
 client.on('interactionCreate', async interaction => {
     if (interaction.type !== InteractionType.ApplicationCommand) return;
     if (!interaction.isCommand()) return;
     const { commandName, options, guildId } = interaction;
     // let serverId = interaction.guild.id;
 
+    // Community commands
     if (commandName === 'profile') { await communityCommands.profile.execute(interaction); }
+    if (commandName ==='setbio') { await communityCommands.setBio.execute(interaction, options); }
 
     // Admin commands
-    if (commandName === 'ban') { await adminCommands.ban.execute(interaction, options); }
-    if (commandName === 'unban') { await adminCommands.unban.execute(interaction, options) }
+    if (commandName === 'mod-ban') { await adminCommands.ban.execute(interaction, options); }
+    if (commandName === 'mod-unban') { await adminCommands.unban.execute(interaction, options) }
     // //
-    if (commandName === 'warn') { await adminCommands.warn.execute(interaction, options); }
-    if (commandName ==='remove-warning') { await adminCommands.removeWarning.execute(interaction, options); }
+    if (commandName === 'mod-kick') { await adminCommands.kick.execute(interaction, options); }
     // //
-    if (commandName === 'timeout') { await adminCommands.timeout.execute(interaction, options, guildId); }
-    if (commandName ==='remove-timeout') { await adminCommands.removeTimeout.execute(interaction, options); }
+    if (commandName === 'mod-warn') { await adminCommands.warn.execute(interaction, options); }
+    if (commandName ==='mod-remove-warning') { await adminCommands.removeWarning.execute(interaction, options); }
     // //
-    if (commandName === 'mute') { await adminCommands.mute.execute(interaction, options, guildId); }
-    if (commandName === 'unmute') { await adminCommands.unmute.execute(interaction, options); }
+    if (commandName === 'mod-timeout') { await adminCommands.timeout.execute(client, interaction, options, guildId); }
+    if (commandName ==='mod-remove-timeout') { await adminCommands.removetimeout.execute(interaction, options); }
     // //
-    if (commandName === 'setup-mute-role') { await adminCommands.setupMuteRole.execute(interaction, options); }
+    if (commandName === 'mod-mute') { await adminCommands.mute.execute(interaction, options, guildId); }
+    if (commandName === 'mod-unmute') { await adminCommands.unmute.execute(interaction, options); }
+    // //
+    if (commandName === 'setup-mute-role') { await configCommands.setupMuteRole.execute(interaction, options); }
+    if (commandName ==='setup-logging-channel') { await configCommands.setupLoggingChannel.execute(interaction, options); }
+    if (commandName === 'setup-welcome-channel') { await configCommands.setWelcomeChannel.execute(interaction, options); }
+    // //
 });
 
 // When message is created, add xp

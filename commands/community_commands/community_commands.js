@@ -1,6 +1,25 @@
 const { EmbedBuilder } = require('discord.js');
 const { User } = require('../../models/models.js'); // Import the Sequelize User model
 
+const {
+    // Embeds
+    createEmbed,
+
+    // Milestone Levels
+    isMilestoneLevel,
+
+    // Role Management
+    manageRoles,
+
+    // User Data
+    getUserData,
+    getUserCount,
+    updateUserBio,
+
+    // Server Data
+    getServerData
+} = require('../utils.js');
+
 module.exports = {
     profile: { 
         execute: async (interaction) => {
@@ -92,7 +111,7 @@ module.exports = {
         }
     },
     // Set bio for profile
-    slashSetBio: {
+    setBio: {
         execute: async (interaction) => {
             try {
                 const bio = interaction.options.getString('bio');
