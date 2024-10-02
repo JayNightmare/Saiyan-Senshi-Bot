@@ -1,10 +1,17 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { createEmbed } = require('../utils');
 const { Server, User } = require('../../models/models.js'); // Import the Sequelize User model
+const { logEvent, processLogs } = require('../../events/logEvents.js');
+
 
 module.exports = {
     setWelcomeChannel: {
         execute: async (interaction) => {
+            // Save the channel ID to your database for the server
+            const serverId = interaction.guild.id;
+            const user = interaction.user.id;
+            
+            logEvent(serverId, `Set Up Welcome Channel Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.reply({ content: 'You do not have permission to set the welcome channel.', ephemeral: true });
             }
@@ -15,8 +22,7 @@ module.exports = {
                 return interaction.reply({ content: 'Please select a valid text channel.', ephemeral: true });
             }
     
-            // Save the channel ID to your database for the server
-            const serverId = interaction.guild.id;
+            
             try {
                 // Update or create the server entry with the welcome channel ID
                 await Server.upsert({
@@ -43,6 +49,9 @@ module.exports = {
     // * Working
     setupMuteRole: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            const user = interaction.user.id;
+            logEvent(serverId, `Set Up Mute Role Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
                 return interaction.reply('You do not have permission to manage roles');
             }
@@ -112,6 +121,9 @@ module.exports = {
     // * Working
     setupLoggingChannel: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            const user = interaction.user.id;
+            logEvent(serverId, `Set Up Logging Channel Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.reply({ content: 'You do not have permission to manage channels', ephemeral: true });
             }

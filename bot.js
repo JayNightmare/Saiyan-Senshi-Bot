@@ -30,7 +30,6 @@ const {
 const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
 const configCommands = require('./commands/config_commands/configs_commands.js');
-const logEvents = require('./events/logEvents.js');
 
 // Load Commands
 const commands = [
