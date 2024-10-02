@@ -33,8 +33,8 @@
     <p>Bot was made for SailorMoon/DBZ Village Discord Server as a commission. If you want your own custom Discord Bot, contact me via</p> 
 </div>
 
-<div align="center"  style="font-size: 45px;  font-weight: bold; ">
-    <a href=https://www.fiverr.com/s/bdoQ9mN>Fiverr</a>
+<div align="center">
+    <a href=https://www.fiverr.com/s/bdoQ9mN style="font-size: 45px;  font-weight: bold;">Fiverr</a>
 </div>
 
 
