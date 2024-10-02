@@ -119,6 +119,9 @@ module.exports = {
             }
         }
     },
+
+    // //
+
     // Set bio for profile
     setBio: {
         execute: async (interaction) => {
@@ -159,4 +162,11 @@ module.exports = {
             }
         }
     },
+
+    // //
+    help: {
+        execute: async (interaction) => {
+            
+        }
+    }
 };

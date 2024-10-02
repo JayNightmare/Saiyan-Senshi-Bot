@@ -1,6 +1,18 @@
-const { Client, GatewayIntentBits, Events, Collection, REST, Routes, SlashCommandBuilder, InteractionType, EmbedBuilder, ChannelType, PermissionsBitField, AuditLogEvent, Emoji } = require('discord.js');
-const fs = require('fs');
-// const path = require('path');
+const { 
+    Client, 
+    GatewayIntentBits, 
+    Events, 
+    Collection,
+    REST, 
+    Routes, 
+    SlashCommandBuilder, 
+    InteractionType, 
+    EmbedBuilder, 
+    ChannelType, 
+    PermissionsBitField, 
+    AuditLogEvent, 
+    Emoji } = require('discord.js');
+
 const client = new Client({ 
     intents: [
         GatewayIntentBits.Guilds, 
@@ -17,9 +29,10 @@ const client = new Client({
     ]
 });
 
-
 require('dotenv').config();
 const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
+
+// //
 
 const { MilestoneLevel, Server, User } = require('./models/models.js');
 const { logEvent, processLogs } = require('./events/logEvents');
@@ -39,21 +52,28 @@ const {
     getUserCount,
 
     // Server Data
-    getServerData
+    getServerData,
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange
 } = require('./commands/utils.js');
+
+// //
 
 // Load Files
 const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
 const configCommands = require('./commands/config_commands/configs_commands.js');
+const milestoneCommands = require('./commands/milestone_commands/milestone_commands.js');
 const { getReactionRoleConfigurations  } = require('./commands/config_commands/configs_commands.js');
+
+// //
 
 // Load Commands
 const commands = [
     // Community Commands
     new SlashCommandBuilder()
         .setName('profile')
-        .setDescription('Check your profile or the profile of another user.')
+        .setDescription('Check your profile or the profile of another user')
         .addUserOption(option =>
             option.setName('user')
                 .setDescription('The user to view stats for')
@@ -62,7 +82,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('setbio')
-        .setDescription('Set your bio.')
+        .setDescription('Set your bio')
         .addStringOption(option =>
             option.setName('bio')
                 .setDescription('Your new bio')
@@ -74,7 +94,7 @@ const commands = [
     // Admin Commands
     new SlashCommandBuilder()
         .setName('mod-ban')
-        .setDescription('Ban a user from the server.')
+        .setDescription('Ban a user from the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -88,7 +108,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('mod-unban')
-        .setDescription('Unban a user from the server.')
+        .setDescription('Unban a user from the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -104,7 +124,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('mod-kick')
-        .setDescription('Kick a user from the server.')
+        .setDescription('Kick a user from the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.KickMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -121,7 +141,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('mod-warn')
-        .setDescription('Warn a user in the server.')
+        .setDescription('Warn a user in the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -147,7 +167,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('mod-timeout')
-        .setDescription('Timeout a user for a specified duration.')
+        .setDescription('Timeout a user for a specified duration')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -167,7 +187,7 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('mod-mute')
-        .setDescription('Mute a user in the server.')
+        .setDescription('Mute a user in the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -189,7 +209,7 @@ const commands = [
     
     new SlashCommandBuilder()
         .setName('mod-unmute')
-        .setDescription('Unmute a user in the server.')
+        .setDescription('Unmute a user in the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addUserOption(option =>
             option.setName('user')
@@ -206,14 +226,14 @@ const commands = [
 
     new SlashCommandBuilder() 
         .setName('setup-mute-role')
-        .setDescription('Setup a mute role for the server.')
+        .setDescription('Setup a mute role for the server')
         .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
     ,
 
     new SlashCommandBuilder()
         .setName('setup-logging-channel')
-        .setDescription('Setup a logging channel for the server.')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.BANMembers)
+        .setDescription('Setup a logging channel for the server')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('The channel to send logs to')
@@ -222,7 +242,7 @@ const commands = [
         
     new SlashCommandBuilder()
         .setName('setup-welcome-channel')
-        .setDescription('Sets the channel for welcoming new members.')
+        .setDescription('Sets the channel for welcoming new members')
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('The channel to send welcome messages')
@@ -231,21 +251,40 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('setup-reaction-role')
-        .setDescription('Sets up a reaction role message.')
+        .setDescription('Sets up a reaction role message')
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('The channel where the reaction role message will be sent.')
+                .setDescription('The channel where the reaction role message will be sent')
                 .setRequired(true)
-    )
+    ),
+
+    new SlashCommandBuilder()
+        .setName('setup-milestone')
+        .setDescription('Set a milestone level and the role to be granted on reaching that level')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
+        .addIntegerOption(option =>
+            option.setName('level')
+                .setDescription('The level at which the milestone will be reached')
+                .setRequired(true))
+        .addRoleOption(option =>
+            option.setName('role')
+                .setDescription('The role to grant when reaching the milestone level')
+                .setRequired(true)),
     
     // //
+
+    new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Get help with the bot'),
 ].map(command => command.toJSON());
+
+// //
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     try {
-        console.log('Started refreshing application (/) commands.');
+        console.log('Started refreshing application (/) commands');
 
         // Fetch all guilds the bot is in
         const guilds = await client.guilds.fetch();
@@ -288,11 +327,13 @@ client.once('ready', async () => {
             }
         });
 
-        console.log('Successfully reloaded application (/) commands.');
+        console.log('Successfully reloaded application (/) commands');
     } catch (error) {
         console.error(error);
     }
 });
+
+// //
 
 client.on('guildMemberAdd', async (member) => {
     // Fetch the server entry to get the welcome channel ID
@@ -370,6 +411,8 @@ O-oh... ... looks like <@${member.user.id}>-sama has left the fight to defend Ea
     }
 });
 
+// //
+
 client.on('interactionCreate', async interaction => {
     if (interaction.type !== InteractionType.ApplicationCommand) return;
     if (!interaction.isCommand()) return;
@@ -399,8 +442,12 @@ client.on('interactionCreate', async interaction => {
     if (commandName ==='setup-logging-channel') { await configCommands.setupLoggingChannel.execute(interaction, options); }
     if (commandName === 'setup-welcome-channel') { await configCommands.setupWelcomeChannel.execute(interaction, options); }
     if (commandName === 'setup-reaction-role') { await configCommands.setupReactionRole.execute(interaction, options); }
+    if (commandName === 'setup-milestone') { await milestoneCommands.setupMilestone.execute(interaction, options); }
     // //
+    if (commandName === 'help') { await communityCommands.help.execute(interaction); } 
 });
+
+// //
 
 // When message is created, add xp
 const cooldowns = new Map();
@@ -409,8 +456,10 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return; // Ignore bot messages
     const userId = message.author.id;
     const guildId = message.guild.id;
-    const reactionRoleConfigurations = getReactionRoleConfigurations();
-    console.log('Imported reactionRoleConfigurations:', reactionRoleConfigurations);
+
+    // Fetch or create user data from the database
+    let userData = await getUserData(guildId, userId);
+    await giveRoleToUserIfNoneArrange(message.member, guildId, userData.level);
 
     // Check for cooldowns (60 seconds)
     const now = Date.now();
@@ -431,8 +480,6 @@ client.on('messageCreate', async (message) => {
     // Gain XP (5-10 XP randomly)
     const xpGain = Math.floor(Math.random() * 5) + 5;
 
-    // Fetch or create user data from the database
-    let userData = await getUserData(guildId, userId);
     if (!userData) {
         userData = await User.create({
             id: userId,
@@ -458,23 +505,13 @@ client.on('messageCreate', async (message) => {
     const xpNeededForNextLevel = Math.floor((level + 1) * baseMultiplier * Math.pow(scalingFactor, level + 1));
     const xpForNextLevel = xpNeededForNextLevel - xpNeededForCurrentLevel;
 
-    // Check for level-up
     if (userData.xp >= xpForNextLevel) {
         userData.level += 1;
         userData.xp = 0; // Reset XP after leveling up
-
+    
         console.log(`User leveled up to ${userData.level}`);
-
-        // Send level-up message
-        if (await isMilestoneLevel(guildId, userData.level)) {
-            console.log(`User reached a milestone level: ${userData.level}`);
-            message.channel.send(`🎉 Congrats <@${message.author.id}>! You've reached level ${userData.level}, a milestone level!`);
-        } else {
-            message.channel.send(`${message.author.username} leveled up to level ${userData.level}!`);
-        }
-
-        // Handle role and badge updates if necessary
-        await manageRoles(message.member, userData.level, message.guild, message);
+    
+        await checkAndGrantMilestoneRoles(message.member, guildId, userData.level);
     }
 
     // Save updated user data to the database
@@ -500,22 +537,22 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
         // Get the configurations for this guild
         const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return console.log('No configuration found for this guild.');
+        if (!guildConfig) return console.log('No configuration found for this guild');
 
         // Find the specific message configuration within the guild
         const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return console.log('No configuration found for this message.');
+        if (!messageConfig) return console.log('No configuration found for this message');
 
         // Get the emoji identifier (custom vs standard)
         let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
         const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return console.log('No role associated with this emoji.');
+        if (!roleEntry) return console.log('No role associated with this emoji');
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return console.log('Role not found in guild.');
+        if (!role) return console.log('Role not found in guild');
 
         // Get the guild member and add the role
         const member = await reaction.message.guild.members.fetch(user.id);
@@ -560,22 +597,22 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
         // Get the configurations for this guild
         const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return console.log('No configuration found for this guild.');
+        if (!guildConfig) return console.log('No configuration found for this guild');
 
         // Find the specific message configuration within the guild
         const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return console.log('No configuration found for this message.');
+        if (!messageConfig) return console.log('No configuration found for this message');
 
         // Get the emoji identifier (custom vs standard)
         let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
         const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return console.log('No role associated with this emoji.');
+        if (!roleEntry) return console.log('No role associated with this emoji');
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return console.log('Role not found in guild.');
+        if (!role) return console.log('Role not found in guild');
 
         // Get the guild member and add the role
         const member = await reaction.message.guild.members.fetch(user.id);
@@ -603,6 +640,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     }
 });
 
+// //
 
 setInterval(() => processLogs(client), 180000);
 // Login to Discord

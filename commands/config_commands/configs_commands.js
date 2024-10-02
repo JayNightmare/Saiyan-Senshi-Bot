@@ -269,6 +269,7 @@ module.exports = {
             await interaction.followUp({ content: `Reaction role message has been set up in ${channel}.` });
         }
     },
+    
     reactionRoleConfigurations,
     getReactionRoleConfigurations
 }

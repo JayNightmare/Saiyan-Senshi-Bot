@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { MilestoneLevel, Server, User } = require('../models/models.js');
+const { Op } = require('sequelize');
 
 function createEmbed(title, description, color) {
     return new EmbedBuilder()
@@ -65,7 +66,73 @@ async function getServerData(guildId) {
 
 // //
 
+async function checkAndGrantMilestoneRoles(member, guildId, level) {
+    try {
+        // Fetch all milestone levels up to the user's current level for this guild
+        const milestones = await MilestoneLevel.findAll({
+            where: {
+                guildId: guildId,
+                level: {
+                    [Op.lte]: level // Sequelize operator for less than or equal to
+                }
+            },
+            order: [['level', 'ASC']] // Order milestones by level in ascending order
+        });
 
+        // Go through each milestone and check if the user has the role
+        for (const milestone of milestones) {
+            const role = member.guild.roles.cache.get(milestone.reward);
+            if (!role) {
+                console.log(`Role not found for ID ${milestone.reward}`);
+                continue;
+            }
+
+            // Check if the member already has the role
+            if (!member.roles.cache.has(role.id)) {
+                // Add the role if missing
+                await member.roles.add(role);
+                console.log(`Added missing milestone role ${role.name} to user ${member.user.username}.`);
+
+                // Optionally, send a message to the channel
+                const channel = member.guild.channels.cache.find(ch => ch.name === 'general'); // Change to your preferred channel
+                if (channel) {
+                    channel.send(`🎉 <@${member.user.id}> has been granted <@&${role.id}> for reaching level ${milestone.level}! 🎉`);
+                }
+            }
+        }
+    } catch (err) {
+        console.error(`Error checking and granting milestone roles for user ${member.user.username}:`, err);
+    }
+}
+
+async function giveRoleToUserIfNoneArrange(member, guildId, level) {
+    try {
+        // Fetch all milestone levels up to the user's current level for this guild
+        const milestones = await MilestoneLevel.findAll({
+            where: {
+                guildId: guildId,
+                level: {
+                    [Op.lte]: level // Sequelize operator for less than or equal to
+                }
+            },
+            order: [['level', 'ASC']] // Order milestones by level in ascending order
+        });
+
+        // Go through each milestone and check if the user has the role
+        for (const milestone of milestones) {
+            const role = member.guild.roles.cache.get(milestone.reward);
+            if (!role) {
+                continue;
+            }
+
+            if (!member.roles.cache.has(role.id)) {
+                await member.roles.add(role);
+            }
+        }
+    } catch (err) {
+        console.error(`Error checking and granting milestone roles for user ${member.user.username}:`, err);
+    }
+}
 
 // //
 
@@ -85,5 +152,9 @@ module.exports = {
     updateUserBio,
 
     // Server Data
-    getServerData
+    getServerData,
+
+    // Milestone Roles
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange
 };

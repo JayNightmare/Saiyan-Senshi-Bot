@@ -87,7 +87,9 @@ module.exports = {
                 return interaction.reply({ content: 'An error occurred while trying to unban the user', ephemeral: true });
             }
         }
-    },    
+    },   
+    
+    // //
 
     // * Working
     kick: {
@@ -146,6 +148,8 @@ module.exports = {
             }
         }
     },
+
+    // //
 
     // * Working
     warn: {
@@ -267,6 +271,8 @@ module.exports = {
         }
     },
 
+    // //
+
     // * Working
     timeout: {
         execute: async (client, interaction) => {
@@ -341,7 +347,9 @@ module.exports = {
                 console.error(err);
             }
         }
-    },    
+    }, 
+    
+    // //
 
     // * Working
     mute: {
