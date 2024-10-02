@@ -25,12 +25,16 @@
     </a>
   </div> -->
 </div>
-<br/>
-<p align="center">This bot  is currently in development. Please do not use it in production.</p>
-<p align="center">Bot was made for SailorMoon/DBZ Village Discord Server as a commission. If you want your own custom Discord Bot, contact me via</p> 
-<div align="center"  style="font-size: 45px; font-weight: bold; ">
 
-[Fiverr](https://www.fiverr.com/s/bdoQ9mN)
+<br/>
+
+<div align="center">
+    <p>This bot  is currently in development. Please do not use it in production.</p>
+    <p>Bot was made for SailorMoon/DBZ Village Discord Server as a commission. If you want your own custom Discord Bot, contact me via</p> 
+</div>
+
+<div align="center"  style="font-size: 45px;  font-weight: bold; ">
+    <a href=https://www.fiverr.com/s/bdoQ9mN>Fiverr</a>
 </div>
 
 
