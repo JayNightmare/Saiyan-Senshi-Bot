@@ -10,6 +10,7 @@ module.exports = {
 
             const member = interaction.guild.members.cache.get(interaction.options.get('user').value);
             const user = interaction.options.getUser('user');
+            const reason = interaction.options.getString('reason') || 'No reason provided';
             if (!member) return interaction.reply('Please mention a user to ban');
 
             const userEmbed = new EmbedBuilder()
@@ -68,8 +69,8 @@ module.exports = {
                 await interaction.guild.members.unban(user.id, reason);
     
                 const embed = new EmbedBuilder()
-                    .setTitle('User Unbanned')
-                    .setDescription(`${user.displayName} was unbanned from the server`)
+                    .setTitle(`${user.displayName} Unbanned`)
+                    .setDescription(`<@${user.id}> was unbanned from the server`)
                     .setColor(0x2ECC71)
                     .addFields({ name: 'Reason', value: reason });
     

@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, REST, Routes, SlashCommandBuilder, InteractionType, EmbedBuilder, ChannelType, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes, SlashCommandBuilder, InteractionType, EmbedBuilder, ChannelType, PermissionsBitField, AuditLogEvent } = require('discord.js');
 const fs = require('fs');
 // const path = require('path');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildVoiceStates] });
@@ -31,8 +31,6 @@ const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
 const configCommands = require('./commands/config_commands/configs_commands.js');
 const logEvents = require('./events/logEvents.js');
-
-const kickedOrBannedUsers = new Set();
 
 // Load Commands
 const commands = [
@@ -273,14 +271,6 @@ client.once('ready', async () => {
     }
 });
 
-client.on('guildBanAdd', (guild, user) => {
-    // Add the user ID to the cache when they are banned
-    kickedOrBannedUsers.add(user.id);
-
-    // Remove the user from cache after some time to prevent memory leaks
-    setTimeout(() => kickedOrBannedUsers.delete(user.id), 60000); // Remove after 1 minute
-});
-
 client.on('guildMemberAdd', async (member) => {
     // Fetch the server entry to get the welcome channel ID
     const server = await Server.findOne({ where: { serverId: member.guild.id } });
@@ -310,10 +300,25 @@ Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku a
 });
 
 client.on('guildMemberRemove', async (member) => {
-    if (kickedOrBannedUsers.has(member.id)) {
-        kickedOrBannedUsers.delete(member.id);
-        return;
-    }
+    const kickAuditLogs = await member.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.MemberKick
+    });
+
+    const banAuditLogs = await member.guild.fetchAuditLogs({
+        limit: 1,
+        type: AuditLogEvent.MemberBanAdd
+    });
+
+    const kickLog = kickAuditLogs.entries.first();
+    const banLog = banAuditLogs.entries.first();
+
+    const currentTime = Date.now();
+
+    const wasKicked = kickLog && kickLog.target.id === member.id && currentTime - kickLog.createdTimestamp < 5000;
+    const wasBanned = banLog && banLog.target.id === member.id && currentTime - banLog.createdTimestamp < 5000;
+
+    if (wasKicked || wasBanned) return;
 
     // Fetch the server entry to get the goodbye channel ID
     const server = await Server.findOne({ where: { serverId: member.guild.id } });
@@ -327,7 +332,7 @@ client.on('guildMemberRemove', async (member) => {
     const goodbyeEmbed = new EmbedBuilder()
         .setTitle(`${member.user.displayName}-san has left us...`) // Customize the title as you like
         .setDescription(`
-O-oh... ... looks like <@${user.id}>-sama has left the fight to defend Earth with Son Goku and Sailor Moon. As they go to rest to King Kai, we hope they'll reincarnate and come back better than last time!
+O-oh... ... looks like <@${member.user.id}>-sama has left the fight to defend Earth with Son Goku and Sailor Moon. As they go to rest to King Kai, we hope they'll reincarnate and come back better than last time!
 \n\n${member.user.displayName} will be remembered...
             \nWe are now left with **${member.guild.memberCount} senshi warriors** to continue the fight.`)
         .setColor(0x008080) // You can change the color
@@ -341,7 +346,6 @@ O-oh... ... looks like <@${user.id}>-sama has left the fight to defend Earth wit
         console.error('Error sending goodbye message:', err);
     }
 });
-
 
 client.on('interactionCreate', async interaction => {
     if (interaction.type !== InteractionType.ApplicationCommand) return;
