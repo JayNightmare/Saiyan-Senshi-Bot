@@ -77,6 +77,10 @@ const Server = sequelize.define('Server', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    rankUpChannelId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },    
     logLevel: {
         type: DataTypes.STRING, // This will store "low", "medium", or "high"
         defaultValue: 'low' // Default to low level logging

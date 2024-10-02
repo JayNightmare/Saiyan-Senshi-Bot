@@ -270,12 +270,32 @@ const commands = [
             option.setName('role')
                 .setDescription('The role to grant when reaching the milestone level')
                 .setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName('remove-milestone')
+        .setDescription('Remove a milestone level and its associated role')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
+        .addIntegerOption(option =>
+            option.setName('level')
+                .setDescription('The level at which the milestone will be reached')
+                .setRequired(true)),
     
     // //
 
     new SlashCommandBuilder()
         .setName('help')
         .setDescription('Get help with the bot'),
+
+    // //
+
+    new SlashCommandBuilder()
+    .setName('setup-levelup-channel')
+    .setDescription('Set the channel where level up messages will be sent.')
+    .addChannelOption(option => 
+        option.setName('channel')
+            .setDescription('The channel to send level up messages to.')
+            .setRequired(true)
+    ),
 ].map(command => command.toJSON());
 
 // //
@@ -443,6 +463,9 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'setup-welcome-channel') { await configCommands.setupWelcomeChannel.execute(interaction, options); }
     if (commandName === 'setup-reaction-role') { await configCommands.setupReactionRole.execute(interaction, options); }
     if (commandName === 'setup-milestone') { await milestoneCommands.setupMilestone.execute(interaction, options); }
+    if (commandName === 'setup-levelup-channel') { await configCommands.setLevelupChannel.execute(interaction, options); }
+    // //
+    if (commandName === 'remove-milestone') { await milestoneCommands.removeMilestone.execute(interaction, options); }
     // //
     if (commandName === 'help') { await communityCommands.help.execute(interaction); } 
 });
@@ -509,9 +532,7 @@ client.on('messageCreate', async (message) => {
         userData.level += 1;
         userData.xp = 0; // Reset XP after leveling up
     
-        console.log(`User leveled up to ${userData.level}`);
-    
-        await checkAndGrantMilestoneRoles(message.member, guildId, userData.level);
+        await checkAndGrantMilestoneRoles(message.member, guildId, userData.level, message);
     }
 
     // Save updated user data to the database

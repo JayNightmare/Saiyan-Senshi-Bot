@@ -271,5 +271,34 @@ module.exports = {
     },
     
     reactionRoleConfigurations,
-    getReactionRoleConfigurations
+    getReactionRoleConfigurations,
+
+    // //
+
+    setLevelupChannel: {
+        execute: async (interaction) => {
+            // Check for appropriate permission to manage channels
+            if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
+                return interaction.reply({ content: 'You do not have permission to manage channels.', ephemeral: true });
+            }
+    
+            // Get the channel option from the command
+            const channel = interaction.options.getChannel('channel');
+            const guildId = interaction.guild.id;
+    
+            try {
+                // Update or create the server configuration with the rank up channel
+                await Server.upsert({
+                    serverId: guildId,
+                    rankUpChannelId: channel.id
+                });
+    
+                return interaction.reply({ content: `Rank-up messages will now be sent to ${channel}.` });
+            } catch (error) {
+                console.error('Error setting rank-up channel:', error);
+                return interaction.reply({ content: 'An error occurred while setting the rank-up channel. Please try again later.', ephemeral: true });
+            }
+        }
+    }
+    
 }

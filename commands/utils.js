@@ -66,7 +66,7 @@ async function getServerData(guildId) {
 
 // //
 
-async function checkAndGrantMilestoneRoles(member, guildId, level) {
+async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
     try {
         // Fetch all milestone levels up to the user's current level for this guild
         const milestones = await MilestoneLevel.findAll({
@@ -79,11 +79,27 @@ async function checkAndGrantMilestoneRoles(member, guildId, level) {
             order: [['level', 'ASC']] // Order milestones by level in ascending order
         });
 
+        // Check if there's a specific rank-up channel set
+        const serverConfig = await Server.findOne({ where: { serverId: guildId } });
+        const rankUpChannelId = serverConfig?.rankUpChannelId;
+
+        // Fetch the channel to send rank-up messages
+        const rankUpChannel = rankUpChannelId
+            ? member.guild.channels.cache.get(rankUpChannelId) // Use the configured channel if set
+            : message.channel; // Use the message channel otherwise
+
+        // Ensure that `rankUpChannel` is a valid channel object
+        if (!rankUpChannel?.isTextBased()) {
+            console.error('Invalid channel for rank-up messages.');
+            return;
+        }
+
+        let roleGranted = false;
+
         // Go through each milestone and check if the user has the role
         for (const milestone of milestones) {
             const role = member.guild.roles.cache.get(milestone.reward);
             if (!role) {
-                console.log(`Role not found for ID ${milestone.reward}`);
                 continue;
             }
 
@@ -91,15 +107,28 @@ async function checkAndGrantMilestoneRoles(member, guildId, level) {
             if (!member.roles.cache.has(role.id)) {
                 // Add the role if missing
                 await member.roles.add(role);
-                console.log(`Added missing milestone role ${role.name} to user ${member.user.username}.`);
 
-                // Optionally, send a message to the channel
-                const channel = member.guild.channels.cache.find(ch => ch.name === 'general'); // Change to your preferred channel
-                if (channel) {
-                    channel.send(`🎉 <@${member.user.id}> has been granted <@&${role.id}> for reaching level ${milestone.level}! 🎉`);
+                if (rankUpChannel) {
+                    const embed = new EmbedBuilder()
+                        .setTitle('Milestone Achieved!')
+                        .setDescription(`🎉 <@${member.user.id}> has been granted <@&${role.id}> for reaching level ${milestone.level}! 🎉`)
+                        .setColor(0x008080);
+
+                    rankUpChannel.send({ embeds: [embed] });
                 }
             }
         }
+
+        // Send a message even if no milestone role was granted
+        if (!roleGranted && rankUpChannel) {
+            const embed = new EmbedBuilder()
+                .setTitle('Keep Going!')
+                .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep participating to reach the next milestone!`)
+                .setColor(0xFFD700);
+
+            rankUpChannel.send({ embeds: [embed] });
+        }
+
     } catch (err) {
         console.error(`Error checking and granting milestone roles for user ${member.user.username}:`, err);
     }
@@ -118,15 +147,24 @@ async function giveRoleToUserIfNoneArrange(member, guildId, level) {
             order: [['level', 'ASC']] // Order milestones by level in ascending order
         });
 
+        // Get the user's highest role position
+        const memberHighestRolePosition = member.roles.highest.position;
+
         // Go through each milestone and check if the user has the role
         for (const milestone of milestones) {
             const role = member.guild.roles.cache.get(milestone.reward);
-            if (!role) {
+            if (!role) continue;
+
+            // Check if the role is lower than or equal to the user's highest role
+            if (role.position <= memberHighestRolePosition) {
+                console.log(`Skipping role ${role.name} as the user already has a higher or equal role.`);
                 continue;
             }
 
+            // If the user does not have the milestone role, add it
             if (!member.roles.cache.has(role.id)) {
                 await member.roles.add(role);
+                console.log(`Added role ${role.name} to user ${member.user.username}`);
             }
         }
     } catch (err) {
