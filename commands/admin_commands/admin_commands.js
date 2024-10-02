@@ -26,13 +26,13 @@ module.exports = {
             member.ban()
                 .then(() => {
                     const embed = new EmbedBuilder()
-                        .setTitle(`${user.username}-san has been banned!`) // Use `ban` or `kick` as appropriate
+                        .setTitle(`${user.displayName}-san has been banned!`) // Use `ban` or `kick` as appropriate
                         .setDescription(`"Hmph, serves them right! We can still fight with **${interaction.guild.memberCount} senshi warriors**!"\n\nRest in peace, <@${user.id}> won't be missed.`)
                         .setColor(0x008080) // Set color as appropriate for ban/kick
                         .setImage('https://tenor.com/en-GB/view/dragon-ball-super-goku-kamehameha-wave-gif-14323063.gif') // Set the image URL as per your example
                         .setFooter({ text: `Action by: ${interaction.user.tag}` });
 
-                   interaction.reply({ embeds: [embed] });
+                    interaction.reply({ embeds: [embed] });
                 })
                 .catch(err => {
                     interaction.reply('Unable to ban the user');
@@ -69,7 +69,7 @@ module.exports = {
     
                 const embed = new EmbedBuilder()
                     .setTitle('User Unbanned')
-                    .setDescription(`${user.tag} was unbanned from the server`)
+                    .setDescription(`${user.displayName} was unbanned from the server`)
                     .setColor(0x2ECC71)
                     .addFields({ name: 'Reason', value: reason });
     
@@ -123,7 +123,7 @@ module.exports = {
                 // Create an embed to confirm the kick
                 const embed = new EmbedBuilder()
                     .setColor(0x008080) // Set color as appropriate for ban/kick
-                    .setTitle(`${user.username}-san has been kicked!`)
+                    .setTitle(`${user.displayName}-san has been kicked!`)
                     .setDescription(`"Hmph, serves them right! We can still fight with **${interaction.guild.memberCount} senshi warriors**!"\n\nRest in peace, <@${user.id}> won't be missed.`)
                     .setImage('https://tenor.com/en-GB/view/dragon-ball-super-goku-kamehameha-wave-gif-14323063.gif') 
                     .setFooter({ text: `Action by: ${interaction.user.tag}` })
@@ -177,7 +177,7 @@ module.exports = {
                 }
     
                 const embed = new EmbedBuilder()
-                    .setTitle('User Warned')
+                    .setTitle(`${user.displayName} Warned`)
                     .setDescription(`<@${member.id}> has been warned`)
                     .setColor( 0x008080 )
                     .addFields(
@@ -237,7 +237,7 @@ module.exports = {
     
                 // Create a success embed message
                 const embed = new EmbedBuilder()
-                    .setTitle('Warning Removed')
+                    .setTitle(`Warning Removed from ${user.displayName}`)
                     .setDescription(`A warning has been removed from <@${member.id}>`)
                     .setColor(0x008080)
                     .addFields({ name: 'Remaining Warnings', value: `${userData.warnings}` });
@@ -291,7 +291,7 @@ module.exports = {
                 console.log(`Try: ${duration}`);
 
                 const embed = new EmbedBuilder()
-                    .setTitle('User Timed Out')
+                    .setTitle(`${user.displayName} Timed Out`)
                     .setDescription(`<@${member.id}> was timed out`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: true},
@@ -308,7 +308,7 @@ module.exports = {
                 console.log(`Error: ${duration}`);
 
                 const embed = new EmbedBuilder()
-                    .setTitle('Error Timing Out User')
+                    .setTitle(`Error Timing Out ${user.displayName}`)
                     .setDescription(`Could not time out <@${member.id}>`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: true},
@@ -350,7 +350,7 @@ module.exports = {
             // Check if member already has a mute role
             if (member.roles.cache.has(muteRoleId)) {
                 const embed = new EmbedBuilder()
-                    .setTitle('Member Already Muted')
+                    .setTitle(`${user.displayName} Already Muted`)
                     .setDescription(`Could not muted: <@${member.id}>`)
                     .addFields(
                         { name: 'Reason', value: reason, inline: true},
@@ -368,7 +368,7 @@ module.exports = {
             member.roles.add(muteRoleId)
                 .then(() => {
                     const embed = new EmbedBuilder()
-                        .setTitle('Member Muted')
+                        .setTitle(`${user.displayName} Muted`)
                         .setDescription(`Muted: <@${member.id}>`)
                         .addFields(
                             { name: 'Reason', value: reason, inline: true },
@@ -385,7 +385,7 @@ module.exports = {
                         if (member.roles.cache.has(muteRoleId)) {
                             await member.roles.remove(muteRoleId);
                             const unmuteEmbed = new EmbedBuilder()
-                                .setTitle('Member unmuted')
+                                .setTitle(`${user.displayName} unmuted`)
                                 .setDescription(`Could not muted: <@${member.id}>`)
                                 .addFields(
                                     { name: 'Reason', value: reason, inline: true},
@@ -437,7 +437,7 @@ module.exports = {
             }
     
             if (unmuted) {
-                const embed = createEmbed('User Unmuted', `<@${member.id}> was unmuted from the server`, 0x008080);
+                const embed = createEmbed(`${user.displayName} Unmuted`, `<@${member.id}> was unmuted from the server`, 0x008080);
                 interaction.reply({ embeds: [embed] });
             } else {
                 interaction.reply('User is not currently muted');
@@ -446,7 +446,4 @@ module.exports = {
     },    
 
     // //
-
-  
-    
 };
