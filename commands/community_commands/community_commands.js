@@ -23,10 +23,13 @@ const {
 module.exports = {
     profile: { 
         execute: async (interaction) => {
+            let serverId = interaction.guild.id;
+            const user = interaction.user.id;
+            logEvent(serverId, `Profile run by <@${user.id}>`, 'low');
             try {
                 // Get the user whose profile to display (or default to the user who ran the command)
                 const user = interaction.options.getUser('user') || interaction.user;
-                const serverId = interaction.guild.id;
+                serverId = interaction.guild.id;
 
                 // Fetch user data from the database
                 let userData = await User.findOne({ where: { id: user.id, guildId: serverId } });
@@ -113,11 +116,14 @@ module.exports = {
     // Set bio for profile
     setBio: {
         execute: async (interaction) => {
+            let serverId = interaction.guild.id;
+            let user = interaction.user.id;
+            logEvent(serverId, `Set Up Welcome Channel Was Run by <@${user.id}>`, 'low');
             try {
                 const bio = interaction.options.getString('bio');
-                const user = interaction.user;
+                user = interaction.user;
                 
-                const serverId = interaction.guild.id;
+                serverId = interaction.guild.id;
                 const serverConfigsData = await getServerConfigsData(serverId);
                 const allowedChannelId = serverConfigsData?.allowedChannel;
                 let allowedChannel = interaction.channel;
