@@ -6,8 +6,6 @@ require('dotenv').config();
 const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
 
 const { MilestoneLevel, Server, User } = require('./models/models.js');
-
-
 const { logEvent, processLogs } = require('./events/logEvents');
 
 const {
@@ -28,19 +26,13 @@ const {
     getServerData
 } = require('./commands/utils.js');
 
-// Load Events
-const eventFiles = fs.readdirSync('./events').filter(file => file.endsWith('.js'));
-
-for (const file of eventFiles) {
-    const event = require(`./events/${file}`);
-    const eventName = file.split('.')[0];
-    client.on(eventName, (...args) => event(client, ...args));
-}
-
 // Load Files
 const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
 const configCommands = require('./commands/config_commands/configs_commands.js');
+const logEvents = require('./events/logEvents.js');
+
+const kickedOrBannedUsers = new Set();
 
 // Load Commands
 const commands = [
@@ -281,6 +273,14 @@ client.once('ready', async () => {
     }
 });
 
+client.on('guildBanAdd', (guild, user) => {
+    // Add the user ID to the cache when they are banned
+    kickedOrBannedUsers.add(user.id);
+
+    // Remove the user from cache after some time to prevent memory leaks
+    setTimeout(() => kickedOrBannedUsers.delete(user.id), 60000); // Remove after 1 minute
+});
+
 client.on('guildMemberAdd', async (member) => {
     // Fetch the server entry to get the welcome channel ID
     const server = await Server.findOne({ where: { serverId: member.guild.id } });
@@ -310,6 +310,11 @@ Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku a
 });
 
 client.on('guildMemberRemove', async (member) => {
+    if (kickedOrBannedUsers.has(member.id)) {
+        kickedOrBannedUsers.delete(member.id);
+        return;
+    }
+
     // Fetch the server entry to get the goodbye channel ID
     const server = await Server.findOne({ where: { serverId: member.guild.id } });
     if (!server?.welcomeChannelId) return; // No goodbye channel set
@@ -322,8 +327,8 @@ client.on('guildMemberRemove', async (member) => {
     const goodbyeEmbed = new EmbedBuilder()
         .setTitle(`${member.user.displayName}-san has left us...`) // Customize the title as you like
         .setDescription(`
-O-oh... ... looks like SOSTeraDrive-sama has left the fight to defend Earth with Son Goku and Sailor Moon. As they go to rest to King Kai, we hope they'll reincarnate and come back better than last time!
-\n\nThey will be remembered...
+O-oh... ... looks like <@${user.id}>-sama has left the fight to defend Earth with Son Goku and Sailor Moon. As they go to rest to King Kai, we hope they'll reincarnate and come back better than last time!
+\n\n${member.user.displayName} will be remembered...
             \nWe are now left with **${member.guild.memberCount} senshi warriors** to continue the fight.`)
         .setColor(0x008080) // You can change the color
         .setImage('https://tenor.com/en-GB/view/sailor-moon-sad-anime-alone-gif-17542952.gif') // Use a goodbye GIF
