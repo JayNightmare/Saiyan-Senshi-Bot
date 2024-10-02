@@ -283,7 +283,7 @@ client.once('ready', async () => {
 
 client.on('guildMemberAdd', async (member) => {
     // Fetch the server entry to get the welcome channel ID
-    const server = await Servers.findOne({ where: { serverId: member.guild.id } });
+    const server = await Server.findOne({ where: { serverId: member.guild.id } });
     if (!server?.welcomeChannelId) return; // No welcome channel set
 
     // Get the welcome channel
@@ -292,17 +292,48 @@ client.on('guildMemberAdd', async (member) => {
 
     // Build the welcome message based on your reference
     const welcomeEmbed = new EmbedBuilder()
-        .setTitle(`Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku and Sailor Moon.`)
-        .setDescription(`We now have ${member.guild.memberCount} warriors to join the fight! But are you a Saiyan, a Senshi, or both?\n\n${member.user} -sama, please select your roles to identify your training grounds, your identification, and other things Goku and Usagi will need to know (they are a bit clueless).`)
+        .setTitle(`YAY! Welcome to ${member.guild.name} ${member.user.displayName}!`)
+        .setDescription(`
+Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku and Sailor Moon.
+\nWe now have ${member.guild.memberCount} warriors to join the fight! But are you a Saiyan, a Senshi, or both?
+\n\n${member.user}-sama, please select your roles to identify your training grounds, your identification, and other things Goku and Usagi will need to know (they are a bit clueless).`)
         .setColor(0x008080)
         .setImage('https://tenor.com/en-GB/view/kids-goku-peace-cool-shades-son-goku-gif-16874131.gif')
         .setFooter({ text: `Welcome to ${member.guild.name}` });
 
     // Send the message in the welcome channel
     try {
-        await welcomeChannel.send({ content: `Yayyy! ${member} has joined the server!`, embeds: [welcomeEmbed] });
+        await welcomeChannel.send({ embeds: [welcomeEmbed] });
     } catch (err) {
         console.error('Error sending welcome message:', err);
+    }
+});
+
+client.on('guildMemberRemove', async (member) => {
+    // Fetch the server entry to get the goodbye channel ID
+    const server = await Server.findOne({ where: { serverId: member.guild.id } });
+    if (!server?.welcomeChannelId) return; // No goodbye channel set
+
+    // Get the goodbye channel
+    const goodbyeChannel = member.guild.channels.cache.get(server.welcomeChannelId);
+    if (!goodbyeChannel || goodbyeChannel.type !== 0) return; // Invalid channel
+
+    // Build the goodbye message
+    const goodbyeEmbed = new EmbedBuilder()
+        .setTitle(`${member.user.displayName}-san has left us...`) // Customize the title as you like
+        .setDescription(`
+O-oh... ... looks like SOSTeraDrive-sama has left the fight to defend Earth with Son Goku and Sailor Moon. As they go to rest to King Kai, we hope they'll reincarnate and come back better than last time!
+\n\nThey will be remembered...
+            \nWe are now left with **${member.guild.memberCount} senshi warriors** to continue the fight.`)
+        .setColor(0x008080) // You can change the color
+        .setImage('https://tenor.com/en-GB/view/sailor-moon-sad-anime-alone-gif-17542952.gif') // Use a goodbye GIF
+        .setFooter({ text: `Goodbye from ${member.guild.name}` });
+
+    // Send the message in the goodbye channel
+    try {
+        await goodbyeChannel.send({ embeds: [goodbyeEmbed] });
+    } catch (err) {
+        console.error('Error sending goodbye message:', err);
     }
 });
 
