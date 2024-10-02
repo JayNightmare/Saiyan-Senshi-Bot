@@ -9,7 +9,7 @@ module.exports = {
         execute: async (interaction) => {
             // Save the channel ID to your database for the server
             const serverId = interaction.guild.id;
-            const user = interaction.user.id;
+            const user = interaction.user;
             
             logEvent(serverId, `Set Up Welcome Channel Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
@@ -50,7 +50,7 @@ module.exports = {
     setupMuteRole: {
         execute: async (interaction) => {
             const serverId = interaction.guild.id;
-            const user = interaction.user.id;
+            const user = interaction.user;
             logEvent(serverId, `Set Up Mute Role Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
                 return interaction.reply('You do not have permission to manage roles');
@@ -122,7 +122,7 @@ module.exports = {
     setupLoggingChannel: {
         execute: async (interaction) => {
             const serverId = interaction.guild.id;
-            const user = interaction.user.id;
+            const user = interaction.user;
             logEvent(serverId, `Set Up Logging Channel Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels)) {
                 return interaction.reply({ content: 'You do not have permission to manage channels', ephemeral: true });

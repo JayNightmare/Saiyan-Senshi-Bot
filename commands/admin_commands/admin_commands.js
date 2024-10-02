@@ -1,15 +1,19 @@
 const { createEmbed } = require('../utils');
 const { MilestoneLevel, Server, User } = require('../../models/models.js');
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const { logEvent, processLogs } = require('../../events/logEvents.js');
 
 module.exports = {
     // * Working
     ban: {
         execute: async (interaction, args) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Ban Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) return interaction.reply('You do not have permission to manage roles');
 
             const member = interaction.guild.members.cache.get(interaction.options.get('user').value);
-            const user = interaction.options.getUser('user');
+            user = interaction.options.getUser('user');
             const reason = interaction.options.getString('reason') || 'No reason provided';
             if (!member) return interaction.reply('Please mention a user to ban');
 
@@ -45,12 +49,15 @@ module.exports = {
     // * Working
     unban: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Unban Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
                 return interaction.reply({ content: 'You do not have permission to unban users', ephemeral: true });
             }
     
             // Get the user and reason from the interaction options
-            const user = interaction.options.getUser('user');
+            user = interaction.options.getUser('user');
             const reason = interaction.options.getString('reason') || 'No reason provided';
     
             // Check if the user exists
@@ -85,13 +92,16 @@ module.exports = {
     // * Working
     kick: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Kick Was Run by <@${user.id}>`, 'low');
             // Check if the member has permission to kick users
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                 return interaction.reply({ content: 'You do not have permission to kick members', ephemeral: true });
             }
     
             // Get the user to kick and the reason for the kick
-            const user = interaction.options.getUser('user');
+            user = interaction.options.getUser('user');
             const reason = interaction.options.getString('reason') || 'No reason provided';
     
             // Ensure the user is part of the server
@@ -140,12 +150,15 @@ module.exports = {
     // * Working
     warn: {
         execute: async (interaction) => {
+            let serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Warn Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                 return interaction.reply('You do not have permission to issue warnings');
             }
     
             // Get the user to warn and the reason for the warning
-            const user = interaction.options.getUser('user');
+            user = interaction.options.getUser('user');
             const reason = interaction.options.getString('reason') || 'No reason provided';
     
             // Fetch the member to ensure they're in the server
@@ -197,13 +210,16 @@ module.exports = {
     // * Working
     removeWarning: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Remove Warning Was Run by <@${user.id}>`, 'low');
             // Check for appropriate permissions
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                 return interaction.reply({ content: 'You do not have permission to manage warnings', ephemeral: true });
             }
     
             // Get the user to remove a warning from
-            const user = interaction.options.getUser('user');
+            user = interaction.options.getUser('user');
     
             // Fetch the member to ensure they're in the server
             const member = interaction.guild.members.cache.get(user.id);
@@ -254,10 +270,13 @@ module.exports = {
     // * Working
     timeout: {
         execute: async (client, interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Timeout Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) return interaction.reply('You do not have permission to manage roles');
 
             // Get the user from the interaction options
-            const user = interaction.options.getUser('user'); // Get the user object
+            user = interaction.options.getUser('user'); // Get the user object
             if (!user) return interaction.reply('Please mention a valid user to time out');
     
             // Fetch the member from the guild (necessary to access guild-specific actions)
@@ -327,6 +346,9 @@ module.exports = {
     // * Working
     mute: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Mute Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                 return interaction.reply('You do not have permission to manage roles');
             }
@@ -409,6 +431,9 @@ module.exports = {
     // * Working
     unmute: {
         execute: async (interaction) => {
+            const serverId = interaction.guild.id;
+            let user = interaction.user;
+            logEvent(serverId, `Unmute Was Run by <@${user.id}>`, 'low');
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.KickMembers)) {
                 return interaction.reply('You do not have permission to manage roles');
             }

@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { User } = require('../../models/models.js'); // Import the Sequelize User model
+const { logEvent, processLogs } = require('../../events/logEvents.js');
 
 const {
     // Embeds
@@ -24,7 +25,7 @@ module.exports = {
     profile: { 
         execute: async (interaction) => {
             let serverId = interaction.guild.id;
-            const user = interaction.user.id;
+            const user = interaction.user;
             logEvent(serverId, `Profile run by <@${user.id}>`, 'low');
             try {
                 // Get the user whose profile to display (or default to the user who ran the command)
@@ -33,6 +34,11 @@ module.exports = {
 
                 // Fetch user data from the database
                 let userData = await User.findOne({ where: { id: user.id, guildId: serverId } });
+
+                // Check if user is in the server
+                if (!interaction.guild.members.cache.has(user.id)) {
+                    return interaction.reply({ content: 'User is not in this server.', ephemeral: true });
+                }
 
                 if (!userData) {
                     // Create default user data if none exists
@@ -117,8 +123,8 @@ module.exports = {
     setBio: {
         execute: async (interaction) => {
             let serverId = interaction.guild.id;
-            let user = interaction.user.id;
-            logEvent(serverId, `Set Up Welcome Channel Was Run by <@${user.id}>`, 'low');
+            let user = interaction.user;
+            logEvent(serverId, `Set Bio Was Run by <@${user.id}>`, 'low');
             try {
                 const bio = interaction.options.getString('bio');
                 user = interaction.user;
