@@ -312,14 +312,21 @@ const commands = [
     // //
 
     new SlashCommandBuilder()
-    .setName('setup-levelup-channel')
-    .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
-    .setDescription('Set the channel where level up messages will be sent.')
-    .addChannelOption(option => 
+        .setName('setup-levelup-channel')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
+        .setDescription('Set the channel where level up messages will be sent')
+        .addChannelOption(option => 
         option.setName('channel')
             .setDescription('The channel to send level up messages to.')
             .setRequired(true)
     ),
+
+    // //
+
+    new SlashCommandBuilder()
+        .setName('refresh-reactions')
+        .setDescription('Refresh the reaction roles if they stop working')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageMessages),
 
     // //
 
@@ -589,6 +596,8 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'setup-milestone') { console.log(`setup milestone command ran`); await milestoneCommands.setupMilestone.execute(interaction, options); }
     if (commandName === 'setup-levelup-channel') { console.log(`setup levelup command ran`); await configCommands.setLevelupChannel.execute(interaction, options); }
     // //
+    if (commandName === 'refresh-reactions') { console.log(`refresh reaction command ran`); await adminCommands.refreshReactions.execute(interaction); }
+    // //
     if (commandName === 'remove-milestone') { console.log(`rm milestone command ran`); await milestoneCommands.removeMilestone.execute(interaction, options); }
     if (commandName === 'view-milestones') { console.log(`list milestone command ran`); await milestoneCommands.viewMilestones.execute(interaction); }
     // //
@@ -692,62 +701,60 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     const guildId = reaction.message.guild.id;
 
     try {
-        const existingRole = await ReactionRole.findOne({
+        // Fetch all reaction roles for this message
+        const existingRoles = await ReactionRole.findAll({
             where: {
+                guildId: guildId,
                 messageId: reaction.message.id,
             },
         });
 
-        console.log(existingRole);
-
-        if (!existingRole) {
+        // If no reaction roles exist for this message, return
+        if (!existingRoles || existingRoles.length === 0) {
             console.log(`No reaction role configuration found for message ID: ${reaction.message.id} in guild: ${guildId}`);
             return;
         }
 
-        console.log(`Reaction role configuration found:`);
-        console.log(existingRole);
-
-        const reactionRoleConfigurations = getReactionRoleConfigurations();
-
-        // Get the configurations for this guild
-        const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return;
-
-        // Find the specific message configuration within the guild
-        const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return;
-
         // Get the emoji identifier (custom vs standard)
-        let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
+        const emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
-        const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return;
+        const roleEntry = existingRoles.find(entry => entry.emoji === emojiIdentifier);
+        if (!roleEntry) {
+            console.log(`No role associated with emoji ${emojiIdentifier} for message ID: ${reaction.message.id}`);
+            return;
+        }
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return;
+        if (!role) {
+            console.log(`Role not found in guild ${guildId} for role ID: ${roleEntry.roleId}`);
+            return;
+        }
 
-        // Get the guild member and add the role
+        // Fetch the member who reacted
         const member = await reaction.message.guild.members.fetch(user.id);
 
-        // Get the bot's highest role to compare with the role to be added
+        // Fetch the bot's highest role to compare with the role to be added
         const botMember = await reaction.message.guild.members.fetch(client.user.id);
         const botHighestRole = botMember.roles.highest;
 
         // Check if the bot has permission to manage roles and if its role is higher than the target role
         if (!reaction.message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+            console.log(`Bot lacks 'Manage Roles' permission in guild ${guildId}`);
             return;
         }
 
         if (botHighestRole.comparePositionTo(role) <= 0) {
+            console.log(`Bot's role (${botHighestRole.name}) is not higher than the role to be added (${role.name})`);
             return; // Prevent adding the role to avoid the permission error
         }
 
         // Add the role to the member
         await member.roles.add(role);
+        console.log(`Added role ${role.name} to user ${user.username}`);
     } catch (error) {
+        console.error('Error adding role based on reaction:', error);
         return;
     }
 });
@@ -763,33 +770,60 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
     const guildId = reaction.message.guild.id;
 
     try {
-        const reactionRoleConfigurations = getReactionRoleConfigurations();
+        // Fetch all reaction roles for this message
+        const existingRoles = await ReactionRole.findAll({
+            where: {
+                guildId: guildId,
+                messageId: reaction.message.id,
+            },
+        });
 
-        // Get the configurations for this guild
-        const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return;
-
-        // Find the specific message configuration within the guild
-        const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return;
+        // If no reaction roles exist for this message, return
+        if (!existingRoles || existingRoles.length === 0) {
+            console.log(`No reaction role configuration found for message ID: ${reaction.message.id} in guild: ${guildId}`);
+            return;
+        }
 
         // Get the emoji identifier (custom vs standard)
-        let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
+        const emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
-        const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return;
+        const roleEntry = existingRoles.find(entry => entry.emoji === emojiIdentifier);
+        if (!roleEntry) {
+            console.log(`No role associated with emoji ${emojiIdentifier} for message ID: ${reaction.message.id}`);
+            return;
+        }
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return;
+        if (!role) {
+            console.log(`Role not found in guild ${guildId} for role ID: ${roleEntry.roleId}`);
+            return;
+        }
 
-        // Get the guild member
+        // Fetch the member who reacted
         const member = await reaction.message.guild.members.fetch(user.id);
 
-        // Remove the role from the member
+        // Fetch the bot's highest role to compare with the role to be added
+        const botMember = await reaction.message.guild.members.fetch(client.user.id);
+        const botHighestRole = botMember.roles.highest;
+
+        // Check if the bot has permission to manage roles and if its role is higher than the target role
+        if (!reaction.message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+            console.log(`Bot lacks 'Manage Roles' permission in guild ${guildId}`);
+            return;
+        }
+
+        if (botHighestRole.comparePositionTo(role) <= 0) {
+            console.log(`Bot's role (${botHighestRole.name}) is not higher than the role to be added (${role.name})`);
+            return; // Prevent adding the role to avoid the permission error
+        }
+
+        // Add the role to the member
         await member.roles.remove(role);
+        console.log(`Added role ${role.name} to user ${user.username}`);
     } catch (error) {
+        console.error('Error adding role based on reaction:', error);
         return;
     }
 });

@@ -4,9 +4,10 @@ const { logEvent } = require('../../events/logEvents.js');
 
 const { getReactionRoleConfigurations } = require('../config_commands/configs_commands.js')
 
-async function saveReactionRole(guildId, messageId, emoji, roleId) {
+async function saveReactionRole(guildId, channelId, messageId, emoji, roleId) {
     await ReactionRole.create({
         guildId,
+        channelId,
         messageId,
         emoji,
         roleId,
@@ -21,13 +22,14 @@ async function loadReactionRoles() {
         const reactionRoleConfigurations = getReactionRoleConfigurations();
 
         // Iterate through the results and populate the in-memory configuration
-        allReactionRoles.forEach(({ guildId, messageId, emoji, roleId }) => {
+        allReactionRoles.forEach(({ guildId, messageId, channelId, emoji, roleId }) => {
             if (!reactionRoleConfigurations.has(guildId)) {
                 reactionRoleConfigurations.set(guildId, []);
             }
             // Add to the server-specific array in the configuration
             reactionRoleConfigurations.get(guildId).push({
                 messageId,
+                channelId,
                 emoji,
                 roleId
             });

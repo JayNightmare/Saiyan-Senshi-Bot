@@ -30,9 +30,10 @@ const {
     loadReactionRoles
 } = require('../Utils_Functions/utils-reactions.js');
 
-const { Server, User } = require('../../models/models.js');
+const { Server, User, ReactionRole } = require('../../models/models.js');
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { logEvent } = require('../../events/logEvents.js');
+const { getReactionRoleConfigurations  } = require('../config_commands/configs_commands.js');
 
 module.exports = {
     // * Working
@@ -519,7 +520,68 @@ module.exports = {
                 interaction.reply('User is not currently muted');
             }
         }
-    },    
+    },  
 
     // //
+
+    refreshReactions: {
+        execute: async (interaction) => {
+            try {
+                // Check if the user has permission to use this command
+                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+                    return interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
+                }
+        
+                await interaction.reply({ content: 'Refreshing all reaction roles...' });
+        
+                // Load the reaction roles from the database
+                await loadReactionRoles();
+        
+                // Fetch all reaction role configurations for the current guild
+                const reactionRoleConfigurations = await ReactionRole.findAll({ where: { guildId: interaction.guild.id } });
+        
+                // Iterate through each configuration for the guild
+                for (const config of reactionRoleConfigurations) {
+                    try {
+                        console.log(`Processing guildId: ${config.guildId}, channelId: ${config.channelId}, messageId: ${config.messageId}`);
+                        // Fetch guild, channel, and message without modifying reactions
+                        const guild = await interaction.client.guilds.fetch(config.guildId);
+                        const channel = await guild.channels.fetch(config.channelId);
+        
+                        if (!channel) {
+                            console.log(`Channel not found: ${config.channelId} in guild ${guild.name}`);
+                            continue;
+                        }
+        
+                        try {
+                            const message = await channel.messages.fetch(config.messageId);
+        
+                            // Iterate through the reactions on the message
+                            message.reactions.cache.each(async (reaction) => {
+                                const users = await reaction.users.fetch();
+                                users.each(user => {
+                                    if (!user.bot) {
+                                        console.log(`Reaction found from user ${user.tag} on message ${message.id}`);
+                                    }
+                                });
+                            });
+        
+                            console.log(`Successfully refreshed reactions for message ID: ${message.id} in guild ${guild.name}`);
+                        } catch (error) {
+                            console.error(`Error fetching message ID ${config.messageId} in channel ${config.channelId}:`, error);
+                            continue; // Skip to the next configuration if fetching the message fails
+                        }
+        
+                    } catch (error) {
+                        console.error(`Error refreshing reactions for guild ${config.guildId}:`, error);
+                    }
+                }
+        
+                await interaction.followUp({ content: 'All reaction roles have been refreshed!' });
+            } catch (error) {
+                console.error('Error refreshing reaction roles:', error);
+                await interaction.followUp({ content: 'An error occurred while refreshing reaction roles.', ephemeral: true });
+            }
+        }
+    }           
 };

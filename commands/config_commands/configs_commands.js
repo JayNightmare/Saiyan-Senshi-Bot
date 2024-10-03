@@ -271,10 +271,11 @@ module.exports = {
             });
 
             let messageId = message.id; 
+            let channelId = channel.id;
 
             for (const { roleId, emoji } of rolesAndEmojis) {
                 await ReactionRole.create({
-                    guildId: serverId, messageId, emoji, roleId
+                    guildId: serverId, messageId, channelId, emoji, roleId
                 });
             }
     
