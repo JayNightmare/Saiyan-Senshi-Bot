@@ -1,7 +1,38 @@
-const { createEmbed } = require('../utils');
-const { MilestoneLevel, Server, User } = require('../../models/models.js');
+const {
+    createEmbed
+} = require('../Utils_Functions/utils-embeds.js');
+
+const {
+    manageRoles
+} = require('../Utils_Functions/utils-roles.js');
+
+const {
+    getUserData,
+    getUserCount
+} = require('../Utils_Functions/utils-user.js');
+
+const {
+    getServerData
+} = require('../Utils_Functions/utils-server.js');
+
+const {
+    // Milestone Roles
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange,
+
+    // Milestone Levels
+    isMilestoneLevel
+} = require('../Utils_Functions/utils-milestones.js');
+
+const {
+    // Reaction Roles
+    saveReactionRole,
+    loadReactionRoles
+} = require('../Utils_Functions/utils-reactions.js');
+
+const { Server, User } = require('../../models/models.js');
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const { logEvent, processLogs } = require('../../events/logEvents.js');
+const { logEvent } = require('../../events/logEvents.js');
 
 module.exports = {
     // * Working

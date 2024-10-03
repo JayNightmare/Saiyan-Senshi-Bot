@@ -122,6 +122,25 @@ const MilestoneLevel = sequelize.define('MilestoneLevel', {
     }
 });
 
+const ReactionRole = sequelize.define('ReactionRoles', {
+    guildId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    messageId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    emoji: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+    roleId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
+});
+
 // Syncing the models with the database
 (async () => {
     try {
@@ -129,10 +148,11 @@ const MilestoneLevel = sequelize.define('MilestoneLevel', {
         await Punishment.sync(); // Create the Punishment table if it doesn't exist
         await Server.sync(); // Create the Server table if it doesn't exist
         await MilestoneLevel.sync(); // Create the MilestoneLevel table if it doesn't exist
+        await ReactionRole.sync(); // Create the ReactionRole table if it doesn't exist
         console.log('Database models synced successfully.');
     } catch (error) {
         console.error('Unable to sync models with the database:', error);
     }
 })();
 
-module.exports = { User, Punishment, Server, MilestoneLevel };
+module.exports = { User, Punishment, Server, MilestoneLevel, ReactionRole };

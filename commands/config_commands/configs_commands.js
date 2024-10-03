@@ -1,7 +1,38 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const { createEmbed } = require('../utils');
-const { Server, User } = require('../../models/models.js'); // Import the Sequelize User model
-const { logEvent, processLogs } = require('../../events/logEvents.js');
+const { Server } = require('../../models/models.js'); // Import the Sequelize User model
+const { logEvent } = require('../../events/logEvents.js');
+
+const {
+    createEmbed
+} = require('../Utils_Functions/utils-embeds.js');
+
+const {
+    manageRoles
+} = require('../Utils_Functions/utils-roles.js');
+
+const {
+    getUserData,
+    getUserCount
+} = require('../Utils_Functions/utils-user.js');
+
+const {
+    getServerData
+} = require('../Utils_Functions/utils-server.js');
+
+const {
+    // Milestone Roles
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange,
+
+    // Milestone Levels
+    isMilestoneLevel
+} = require('../Utils_Functions/utils-milestones.js');
+
+const {
+    // Reaction Roles
+    saveReactionRole,
+    loadReactionRoles
+} = require('../Utils_Functions/utils-reactions.js');
 
 const reactionRoleConfigurations = new Map();
 
@@ -266,6 +297,10 @@ module.exports = {
                 messageId: message.id,
                 rolesAndEmojis
             });
+
+            for (const { roleId, emoji } of rolesAndEmojis) {
+                await saveReactionRole(serverId, message.id, emoji, roleId);
+            }
     
             await interaction.followUp({ content: `Reaction role message has been set up in ${channel}.` });
         }

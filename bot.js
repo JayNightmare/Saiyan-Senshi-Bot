@@ -31,32 +31,44 @@ const client = new Client({
 });
 
 require('dotenv').config();
-const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.TEST_TOKEN);
 
 // //
 
-const { MilestoneLevel, Server, User, Punishment } = require('./models/models.js');
+const { MilestoneLevel, Server, User, Punishment, ReactionRole } = require('./models/models.js');
 const { logEvent, processLogs } = require('./events/logEvents');
 
 const {
-    // Embeds
-    createEmbed,
+    createEmbed
+} = require('./commands/Utils_Functions/utils-embeds.js');
+
+const {
+    manageRoles
+} = require('./commands/Utils_Functions/utils-roles.js');
+
+const {
+    getUserData,
+    getUserCount
+} = require('./commands/Utils_Functions/utils-user.js');
+
+const {
+    getServerData
+} = require('./commands/Utils_Functions/utils-server.js');
+
+const {
+    // Milestone Roles
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange,
 
     // Milestone Levels
-    isMilestoneLevel,
+    isMilestoneLevel
+} = require('./commands/Utils_Functions/utils-milestones.js');
 
-    // Role Management
-    manageRoles,
-
-    // User Data
-    getUserData,
-    getUserCount,
-
-    // Server Data
-    getServerData,
-    checkAndGrantMilestoneRoles,
-    giveRoleToUserIfNoneArrange
-} = require('./commands/utils.js');
+const {
+    // Reaction Roles
+    saveReactionRole,
+    loadReactionRoles
+} = require('./commands/Utils_Functions/utils-reactions.js');
 
 // //
 
@@ -67,6 +79,7 @@ const configCommands = require('./commands/config_commands/configs_commands.js')
 const milestoneCommands = require('./commands/milestone_commands/milestone_commands.js');
 const { getReactionRoleConfigurations  } = require('./commands/config_commands/configs_commands.js');
 const help_menu_selected = require('./events/help_menu_selected.js');
+const ownerCommands = require('./commands/owner_commands/owner_commands.js');
 
 // //
 
@@ -307,6 +320,13 @@ const commands = [
             .setDescription('The channel to send level up messages to.')
             .setRequired(true)
     ),
+
+    // //
+
+    // * Owner Commands
+    new SlashCommandBuilder()
+        .setName('server-call')
+        .setDescription('Owner commands')
 ].map(command => command.toJSON());
 
 // //
@@ -360,6 +380,8 @@ client.once('ready', async () => {
                 console.error(`Error registering commands for guild: ${guild.id}`, error);
             }
         });
+
+        await loadReactionRoles();
 
         console.log('Successfully reloaded application (/) commands');
     } catch (error) {
@@ -537,7 +559,9 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'remove-milestone') { console.log(`rm milestone command ran`); await milestoneCommands.removeMilestone.execute(interaction, options); }
     if (commandName === 'view-milestones') { console.log(`list milestone command ran`); await milestoneCommands.viewMilestones.execute(interaction); }
     // //
-    if (commandName === 'help') { console.log(`help command ran`); await communityCommands.help.execute(interaction); }   
+    if (commandName === 'help') { console.log(`help command ran`); await communityCommands.help.execute(interaction); }
+    // //
+    if (commandName === 'server-call') { console.log(`server call command ran`); await ownerCommands.serverCall.execute(interaction); }
 
     if (interaction.customId === 'help_menu') { await help_menu_selected.help_menu_selected.execute(interaction) }
 });
@@ -620,8 +644,6 @@ client.on('messageCreate', async (message) => {
 // //
 
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
-    console.log('Message Reaction Add reached');
-
     // Check if the reaction is in a guild and not from a bot
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
@@ -632,26 +654,25 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
     try {
         const reactionRoleConfigurations = getReactionRoleConfigurations();
-        console.log('Current reactionRoleConfigurations:', reactionRoleConfigurations);
 
         // Get the configurations for this guild
         const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return console.log('No configuration found for this guild');
+        if (!guildConfig) return;
 
         // Find the specific message configuration within the guild
         const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return console.log('No configuration found for this message');
+        if (!messageConfig) return;
 
         // Get the emoji identifier (custom vs standard)
         let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
         const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return console.log('No role associated with this emoji');
+        if (!roleEntry) return;
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return console.log('Role not found in guild');
+        if (!role) return;
 
         // Get the guild member and add the role
         const member = await reaction.message.guild.members.fetch(user.id);
@@ -662,26 +683,22 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
         // Check if the bot has permission to manage roles and if its role is higher than the target role
         if (!reaction.message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            console.log(`Bot lacks the 'Manage Roles' permission.`);
             return;
         }
 
         if (botHighestRole.comparePositionTo(role) <= 0) {
-            console.log(`Bot role ${botHighestRole.name} is not higher than the role to be added ${role.name}`);
             return; // Prevent adding the role to avoid the permission error
         }
 
         // Add the role to the member
         await member.roles.add(role);
-        console.log(`Added role ${role.name} to user ${user.username}`);
     } catch (error) {
-        console.error('Error in MessageReactionAdd:', error);
+        return;
     }
 });
 
+// Assuming you have this function in your reaction remove logic
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
-    console.log('Message Reaction Remove reached');
-
     // Check if the reaction is in a guild and not from a bot
     if (reaction.message.partial) await reaction.message.fetch();
     if (reaction.partial) await reaction.fetch();
@@ -692,54 +709,47 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
     try {
         const reactionRoleConfigurations = getReactionRoleConfigurations();
-        console.log('Current reactionRoleConfigurations:', reactionRoleConfigurations);
 
         // Get the configurations for this guild
         const guildConfig = reactionRoleConfigurations.get(guildId);
-        if (!guildConfig) return console.log('No configuration found for this guild');
+        if (!guildConfig) return;
 
         // Find the specific message configuration within the guild
         const messageConfig = guildConfig.find(config => config.messageId === reaction.message.id);
-        if (!messageConfig) return console.log('No configuration found for this message');
+        if (!messageConfig) return;
 
         // Get the emoji identifier (custom vs standard)
         let emojiIdentifier = reaction.emoji.id ? `<:${reaction.emoji.name}:${reaction.emoji.id}>` : reaction.emoji.name;
 
         // Find the role associated with the emoji
         const roleEntry = messageConfig.rolesAndEmojis.find(entry => entry.emoji === emojiIdentifier);
-        if (!roleEntry) return console.log('No role associated with this emoji');
+        if (!roleEntry) return;
 
         // Get the role from the guild
         const role = reaction.message.guild.roles.cache.get(roleEntry.roleId);
-        if (!role) return console.log('Role not found in guild');
+        if (!role) return;
 
-        // Get the guild member and add the role
+        // Get the guild member
         const member = await reaction.message.guild.members.fetch(user.id);
 
-        // Get the bot's highest role to compare with the role to be added
-        const botMember = await reaction.message.guild.members.fetch(client.user.id);
-        const botHighestRole = botMember.roles.highest;
-
-        // Check if the bot has permission to manage roles and if its role is higher than the target role
-        if (!reaction.message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-            console.log(`Bot lacks the 'Manage Roles' permission.`);
-            return;
-        }
-
-        if (botHighestRole.comparePositionTo(role) <= 0) {
-            console.log(`Bot role ${botHighestRole.name} is not higher than the role to be added ${role.name}`);
-            return; // Prevent adding the role to avoid the permission error
-        }
-
-        // Add the role to the member
+        // Remove the role from the member
         await member.roles.remove(role);
-        console.log(`Added role ${role.name} to user ${user.username}`);
+
+        // Remove the record from the database
+        await ReactionRole.destroy({
+            where: {
+                guildId: guildId,
+                messageId: reaction.message.id,
+                emoji: emojiIdentifier
+            }
+        });
+
     } catch (error) {
-        console.error('Error in MessageReactionAdd:', error);
+        return;
     }
 });
 
 // //
 
 setInterval(() => processLogs(client), 180000);
-client.login(process.env.LIVE_TOKEN);
+client.login(process.env.TEST_TOKEN);

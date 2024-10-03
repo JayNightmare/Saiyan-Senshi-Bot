@@ -3,23 +3,36 @@ const { User } = require('../../models/models.js'); // Import the Sequelize User
 const { logEvent, processLogs } = require('../../events/logEvents.js');
 
 const {
-    // Embeds
-    createEmbed,
+    createEmbed
+} = require('../Utils_Functions/utils-embeds.js');
+
+const {
+    manageRoles
+} = require('../Utils_Functions/utils-roles.js');
+
+const {
+    getUserData,
+    getUserCount
+} = require('../Utils_Functions/utils-user.js');
+
+const {
+    getServerData
+} = require('../Utils_Functions/utils-server.js');
+
+const {
+    // Milestone Roles
+    checkAndGrantMilestoneRoles,
+    giveRoleToUserIfNoneArrange,
 
     // Milestone Levels
-    isMilestoneLevel,
+    isMilestoneLevel
+} = require('../Utils_Functions/utils-milestones.js');
 
-    // Role Management
-    manageRoles,
-
-    // User Data
-    getUserData,
-    getUserCount,
-    updateUserBio,
-
-    // Server Data
-    getServerData
-} = require('../utils.js');
+const {
+    // Reaction Roles
+    saveReactionRole,
+    loadReactionRoles
+} = require('../Utils_Functions/utils-reactions.js');
 
 module.exports = {
     profile: { 
