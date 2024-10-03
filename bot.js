@@ -31,7 +31,7 @@ const client = new Client({
 });
 
 require('dotenv').config();
-const rest = new REST({ version: '10' }).setToken(process.env.TEST_TOKEN);
+const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
 
 // //
 
@@ -831,4 +831,4 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 // //
 
 setInterval(() => processLogs(client), 180000);
-client.login(process.env.TEST_TOKEN);
+client.login(process.env.LIVE_TOKEN);
