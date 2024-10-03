@@ -7,13 +7,12 @@ const {
     Routes, 
     SlashCommandBuilder, 
     InteractionType, 
-    EmbedBuilder, 
     ChannelType, 
     PermissionsBitField, 
-    AuditLogEvent, 
-    Emoji, 
-    ActionRowBuilder,
-    StringSelectMenuBuilder} = require('discord.js');
+    AuditLogEvent
+} = require('discord.js');
+
+const { EmbedBuilder, SelectMenuBuilder, ActionRowBuilder } = require('@discordjs/builders');
 
 const client = new Client({ 
     intents: [
@@ -36,7 +35,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.LIVE_TOKEN);
 
 // //
 
-const { MilestoneLevel, Server, User } = require('./models/models.js');
+const { MilestoneLevel, Server, User, Punishment } = require('./models/models.js');
 const { logEvent, processLogs } = require('./events/logEvents');
 
 const {
@@ -67,6 +66,7 @@ const communityCommands = require('./commands/community_commands/community_comma
 const configCommands = require('./commands/config_commands/configs_commands.js');
 const milestoneCommands = require('./commands/milestone_commands/milestone_commands.js');
 const { getReactionRoleConfigurations  } = require('./commands/config_commands/configs_commands.js');
+const help_menu_selected = require('./events/help_menu_selected.js');
 
 // //
 
@@ -320,6 +320,8 @@ client.once('ready', async () => {
                         serverId: guild.id,
                         textChannelId: null,
                         loggingChannelId: null,
+                        welcomeChannelId: null,
+                        rankUpChannelId: null,
                         logLevel: 'low',
                         mute_role_level_1_id: null,
                         mute_role_level_2_id: null
@@ -355,9 +357,63 @@ client.once('ready', async () => {
     }
 });
 
+client.on(Events.GuildCreate, async guild => {
+    try {
+        console.log(`Joined a new guild: ${guild.name} (ID: ${guild.id})`);
+
+        // Check if the server already exists in the database
+        const existingServer = await Server.findOne({ where: { serverId: guild.id } });
+        
+        // If the server already exists, skip creation
+        if (existingServer) {
+            console.log(`Server ${guild.name} already exists in the database.`);
+            return;
+        }
+
+        // Create default entries for the server
+        await Server.create({
+            serverId: guild.id,
+            serverName: guild.name,
+            textChannelId: null,
+            loggingChannelId: null,
+            welcomeChannelId: null,
+            rankUpChannelId: null,
+            logLevel: 'low',
+            mute_role_level_1_id: null,
+            mute_role_level_2_id: null
+        });
+
+        console.log(`Default entries created for server ${guild.name} (ID: ${guild.id})`);
+
+        // You can also send a message to a system channel or owner of the server to say "Hello!"
+        const systemChannel = guild.systemChannel;
+        if (systemChannel) {
+            systemChannel.send('Hello! Thank you for inviting me! Use `/help` to see what I can do!');
+        }
+    } catch (error) {
+        console.error(`Error creating default server entry for ${guild.name}:`, error);
+    }
+});
+
+client.on(Events.GuildDelete, async guild => {
+    try {
+        console.log(`Bot was removed from: ${guild.name} (ID: ${guild.id})`);
+
+        await Server.destroy({ where: { serverId: guild.id } });
+        await User.destroy({ where: { guildId: guild.id } });
+        await MilestoneLevel.destroy({ where: { guildId: guild.id }});
+        await Punishment.destroy({ where: { guildId: guild.id } });
+        console.log(`Removed data for guild: ${guild.name}`);
+
+    } catch (error) {
+        console.error(`Error handling guildDelete for guild ${guild.name}:`, error);
+    }
+});
+
 // //
 
 client.on('guildMemberAdd', async (member) => {
+    if (member.user.bot) return;
     // Fetch the server entry to get the welcome channel ID
     const server = await Server.findOne({ where: { serverId: member.guild.id } });
     if (!server?.welcomeChannelId) return; // No welcome channel set
@@ -386,6 +442,9 @@ Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku a
 });
 
 client.on('guildMemberRemove', async (member) => {
+    // If user is a bot, skip
+    if (member.user.bot) return;
+
     const kickAuditLogs = await member.guild.fetchAuditLogs({
         limit: 1,
         type: AuditLogEvent.MemberKick
@@ -436,11 +495,9 @@ O-oh... ... looks like <@${member.user.id}>-sama has left the fight to defend Ea
 // //
 
 client.on('interactionCreate', async interaction => {
-    if (interaction.type !== InteractionType.ApplicationCommand) return;
-    if (!interaction.isCommand()) return;
-    const { commandName, options, guildId } = interaction;
-    // let serverId = interaction.guild.id;
-
+    if (!interaction.isCommand() && interaction.componentType!== 3) return;
+    const { commandName, options, guildId } = interaction;    
+    
     // Community commands
     if (commandName === 'profile') { await communityCommands.profile.execute(interaction); }
     if (commandName ==='setbio') { await communityCommands.setBio.execute(interaction, options); }
@@ -469,129 +526,10 @@ client.on('interactionCreate', async interaction => {
     // //
     if (commandName === 'remove-milestone') { await milestoneCommands.removeMilestone.execute(interaction, options); }
     // //
-    if (commandName === 'help') {
-        try {
-            const options = [
-                {
-                    label: 'Admin Commands',
-                    description: 'Commands for managing server settings',
-                    value: 'admin_commands',
-                },
-                {
-                    label: 'Community Commands',
-                    description: 'Commands for community interactions',
-                    value: 'community_commands',
-                },
-                {
-                    label: 'Configuration Commands',
-                    description: 'Commands for configuring the bot',
-                    value: 'configuration_commands',
-                },
-                {
-                    label: 'Help With Commands',
-                    description: 'Help with commands for the bot',
-                    value: 'command_help',
-                }
-            ];
-    
-            // Check if the user is the owner and add the Owner Commands option
-            if (interaction.member.id === process.env.OWNER) {
-                options.push({
-                    label: 'Owner Commands',
-                    description: 'Commands only available to the bot owner',
-                    value: 'owner_commands',
-                });
-            }
-    
-            // Create the select menu and action row
-            const row = new ActionRowBuilder()
-                .addComponents(
-                    new StringSelectMenuBuilder()
-                        .setCustomId('help_menu')
-                        .setPlaceholder('Select a category')
-                        .addOptions(options),
-                );
-    
-            // Create the initial embed
-            const optionEmbed = new EmbedBuilder()
-                .setColor(0x3498db)
-                .setTitle("Help")
-                .setDescription("Choose an option below to see commands");
-        
-            // Reply with the embed and select menu
-            await interaction.reply({ embeds: [optionEmbed], components: [row] });
-        } catch (error) {
-            console.error('An error occurred while creating the help embed:', error);
-            interaction.reply({ content: 'An error occurred while generating the help message. Please contact the admin. **Error code: 0hb**', ephemeral: true });
-        }
-    }
-    if (!interaction.isStringSelectMenu()) return;
-    if (interaction.customId === 'help_menu') {
-        console.log('Menu Pressed')
-        // const serverId = interaction.guild.id;
-        let embed;
-        switch (interaction.values[0]) {
-            case 'admin_commands':
-                embed = new EmbedBuilder()
-                    .setColor(0x3498db)
-                    .setTitle('Admin Commands')
-                    .setDescription(`
-                    • List of admin commands
-                    `);
-                break;
-        
-            case 'community_commands':
-                embed = new EmbedBuilder()
-                    .setColor(0x3498db)
-                    .setTitle('Community Commands')
-                    .setDescription(`
-                    • List of community commands
-                    `);
-                break;
-        
-            case 'configuration_commands':
-                embed = new EmbedBuilder()
-                    .setColor(0x3498db)
-                    .setTitle('Configuration Commands')
-                    .setDescription(`
-                    • List of configuration commands
-                    `);
-                break;
-        
-            case 'owner_commands':
-                // Check if the user is the bot owner
-                if (interaction.user.id !== process.env.OWNER) {
-                    return interaction.reply({ content: 'You do not have permission to view this section.', ephemeral: true });
-                }
-                embed = new EmbedBuilder()
-                    .setColor(0xff0000)
-                    .setTitle('Owner Commands')
-                    .setDescription(`
-                    • List of owner commands
-                    `);
-                break;
-    
-            case 'command_help':
-                embed = new EmbedBuilder()
-                    .setColor(0xffa500)
-                    .setTitle('Help With Commands')
-                    .setDescription(`
-                        All commands use slash commands. If you want a new command or feature, please contact the [bot owner](https://discord.com/invite/W3bZxykvAX).
-                    `);
-                break;
-        
-            default:
-                return;
-        }
-    
-        // Validate and send the embed
-        if (embed?.data && (embed.data.title || embed.data.description)) {
-            await interaction.update({ embeds: [embed], components: [] }); // Use update to edit the original message
-        } else {
-            console.error('Attempted to send an embed with missing or invalid fields.');
-            await interaction.reply({ content: 'There was an error generating the command list. Please try again later.', ephemeral: true });
-        }
-    } 
+    if (commandName === 'help') { await communityCommands.help.execute(interaction); }   
+
+    if (interaction.customId === 'help_menu') { await help_menu_selected.help_menu_selected.execute(interaction) }
+    return; // Ensure the rest of the code does not run for select menu interactions
 });
 
 // //
@@ -600,12 +538,24 @@ client.on('interactionCreate', async interaction => {
 const cooldowns = new Map();
 
 client.on('messageCreate', async (message) => {
-    if (message.author.bot) return; // Ignore bot messages
+    // Skip if user is bot
+    if (message.author.bot) return;
     const userId = message.author.id;
     const guildId = message.guild.id;
 
     // Fetch or create user data from the database
     let userData = await getUserData(guildId, userId);
+    if (!userData) {
+        userData = await User.create({
+            userId: userId,
+            username: message.author.username,
+            guildId: guildId,
+            bio: null,
+            level: 0,
+            xp: 0
+        });
+    }
+
     await giveRoleToUserIfNoneArrange(message.member, guildId, userData.level);
 
     // Check for cooldowns (60 seconds)
@@ -626,17 +576,6 @@ client.on('messageCreate', async (message) => {
 
     // Gain XP (5-10 XP randomly)
     const xpGain = Math.floor(Math.random() * 5) + 5;
-
-    if (!userData) {
-        userData = await User.create({
-            id: userId,
-            username: message.author.username,
-            guildId: guildId,
-            bio: null,
-            level: 0,
-            xp: 0
-        });
-    }
 
     // Add XP and message count
     userData.xp += xpGain;

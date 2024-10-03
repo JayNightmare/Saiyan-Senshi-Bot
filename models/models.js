@@ -3,10 +3,9 @@ const sequelize = require('./sequelize');
 
 // User Model: Storing user information (for leveling and other features)
 const User = sequelize.define('User', {
-    id: {
+    userId: {
         type: DataTypes.STRING,
         primaryKey: true,
-        unique: true,
     },
     username: {
         type: DataTypes.STRING,
@@ -15,6 +14,7 @@ const User = sequelize.define('User', {
     guildId: {
         type: DataTypes.STRING,
         allowNull: false,
+        primaryKey: true,
     },
     bio: {
         type: DataTypes.TEXT,
@@ -43,6 +43,7 @@ const Punishment = sequelize.define('Punishment', {
     guildId: {
         type: DataTypes.STRING,
         allowNull: false,
+        primaryKey: true,
     },
     type: {
         type: DataTypes.ENUM('ban', 'warn', 'timeout'),
@@ -63,7 +64,11 @@ const Server = sequelize.define('Server', {
     serverId: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true
+        primaryKey: true,
+    },
+    serverName: {
+        type: DataTypes.STRING,
+        allowNull: false
     },
     textChannelId: {
         type: DataTypes.STRING,
@@ -99,6 +104,7 @@ const MilestoneLevel = sequelize.define('MilestoneLevel', {
     guildId: {
         type: DataTypes.STRING,
         allowNull: false,
+        primaryKey: true,
     },
     level: {
         type: DataTypes.INTEGER,

@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, Emoji, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { User } = require('../../models/models.js'); // Import the Sequelize User model
 const { logEvent, processLogs } = require('../../events/logEvents.js');
 
@@ -166,7 +166,60 @@ module.exports = {
     // //
     help: {
         execute: async (interaction) => {
+            try {
+                const options = [
+                    {
+                        label: 'Admin Commands',
+                        description: 'Commands for managing server settings',
+                        value: 'admin_commands',
+                    },
+                    {
+                        label: 'Community Commands',
+                        description: 'Commands for community interactions',
+                        value: 'community_commands',
+                    },
+                    {
+                        label: 'Configuration Commands',
+                        description: 'Commands for configuring the bot',
+                        value: 'configuration_commands',
+                    },
+                    {
+                        label: 'Help With Commands',
+                        description: 'Help with commands for the bot',
+                        value: 'command_help',
+                    }
+                ];
+        
+                // Check if the user is the owner and add the Owner Commands option
+                if (interaction.member.id === process.env.OWNER) {
+                    options.push({
+                        label: 'Owner Commands',
+                        description: 'Commands only available to the bot owner',
+                        value: 'owner_commands',
+                    });
+                }
+        
+                // Create the select menu and action row
+                const row = new ActionRowBuilder()
+                    .addComponents(
+                        new StringSelectMenuBuilder()
+                            .setCustomId('help_menu')
+                            .setPlaceholder('Select a category')
+                            .addOptions(options),
+                    );
+        
+                // Create the initial embed
+                const optionEmbed = new EmbedBuilder()
+                    .setColor(0x3498db)
+                    .setTitle("Help")
+                    .setDescription("Choose an option below to see commands");
             
+                // Reply with the embed and select menu
+                await interaction.reply({ embeds: [optionEmbed], components: [row] });
+            } catch (error) {
+                console.error('An error occurred while creating the help embed:', error);
+                interaction.reply({ content: 'An error occurred while generating the help message. Please contact the admin. **Error code: 0hb**', ephemeral: true });
+            }
         }
     }
 };
