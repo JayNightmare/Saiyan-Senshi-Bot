@@ -437,7 +437,7 @@ client.on('guildMemberAdd', async (member) => {
     const welcomeEmbed = new EmbedBuilder()
         .setTitle(`YAY! Welcome to ${member.guild.name} ${member.user.displayName}!`)
         .setDescription(`
-Yayyy! ${member.user} -sama has joined the fight to defend Earth with Son Goku and Sailor Moon.
+Yayyy! ${member.user}-sama has joined the fight to defend Earth with Son Goku and Sailor Moon.
 \nWe now have ${member.guild.memberCount} warriors to join the fight! But are you a Saiyan, a Senshi, or both?
 \n\n${member.user}-sama, please select your roles to identify your training grounds, your identification, and other things Goku and Usagi will need to know (they are a bit clueless).`)
         .setColor(0x008080)

@@ -96,38 +96,60 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
         let roleGranted = false;
 
         // Go through each milestone and check if the user has the role
-        for (const milestone of milestones) {
-            const role = member.guild.roles.cache.get(milestone.reward);
-            if (!role) {
-                continue;
-            }
+        
+        // if milestone role exists, go through for loop
+        if (milestones.length > 0) {
+            for (const milestone of milestones) {
+                const role = member.guild.roles.cache.get(milestone.reward);
+                if (!role) {
+                    continue;
+                }
 
-            // Check if the member already has the role
-            if (!member.roles.cache.has(role.id)) {
-                // Add the role if missing
-                await member.roles.add(role);
+                // Check if the member already has the role
+                if (!member.roles.cache.has(role.id)) {
+                    // Add the role if missing
+                    await member.roles.add(role);
 
-                if (rankUpChannel) {
-                    const embed = new EmbedBuilder()
-                        .setTitle('Transformation!')
-                        .setDescription(`🎉 <@${member.user.id}> has been granted <@&${role.id}> for reaching level ${milestone.level}! 🎉`)
-                        .setColor(0x008080);
+                    if (rankUpChannel) {
+                        const embed = new EmbedBuilder()
+                            .setTitle('🎉 **Transformation Reached!** 🎉')
+                            .setDescription(`
+### <@${member.user.id}> has been granted <@&${role.id}> for reaching Level ${milestone.level}!
 
-                    rankUpChannel.send({ embeds: [embed] });
+**Keep training to reach the next transformation!**
+`)
+                            .setImage(`https://tenor.com/en-GB/view/sailor-moon-anime-moon-prism-power-moon-prism-power-makeup-serena-gif-15851654.gif`)
+                            .setColor(0x008080);
+
+                        rankUpChannel.send({ embeds: [embed] });
+                    }
+                } else {
+                    if (rankUpChannel) {
+                        const embed = new EmbedBuilder()
+                            .setTitle('🎉 **Transformation Reached!** 🎉')
+                            .setDescription(`
+**<@${member.user.id}> has been granted <@&${role.id}> for reaching Level ${milestone.level}!**
+
+Keep training to reach the next transformation!
+`)
+                            .setImage(`https://tenor.com/en-GB/view/sailor-moon-anime-moon-prism-power-moon-prism-power-makeup-serena-gif-15851654.gif`)
+                            .setColor(0x008080);
+
+                        rankUpChannel.send({ embeds: [embed] });
+                    }
                 }
             }
+        } else {
+            // Send a message even if no milestone role was granted
+            if (!roleGranted && rankUpChannel) {
+                const embed = new EmbedBuilder()
+                    .setTitle('Keep Training!')
+                    .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep training to reach the next transformation!`)
+                    .setColor(0xFFD700);
+    
+                rankUpChannel.send({ embeds: [embed] });
+            }
         }
-
-        // Send a message even if no milestone role was granted
-        if (!roleGranted && rankUpChannel) {
-            const embed = new EmbedBuilder()
-                .setTitle('Keep Training!')
-                .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep training to reach the next transformation!`)
-                .setColor(0xFFD700);
-
-            rankUpChannel.send({ embeds: [embed] });
-        }
-
     } catch (err) {
         console.error(`Error checking and granting milestone roles for user ${member.user.username}:`, err);
     }

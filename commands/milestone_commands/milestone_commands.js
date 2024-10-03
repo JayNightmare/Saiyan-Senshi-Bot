@@ -107,6 +107,10 @@ module.exports = {
             const guildId = interaction.guild.id;
 
             try {
+                // Fetch the user's highest role
+                const member = interaction.guild.members.cache.get(interaction.user.id);
+                const highestRole = member.roles.highest;
+            
                 // Check if a milestone for this level exists in the database
                 const existingMilestone = await MilestoneLevel.findOne({
                     where: {
@@ -114,20 +118,37 @@ module.exports = {
                         level
                     }
                 });
-
-                if (!existingMilestone) { return interaction.reply({ content: `No milestone for level ${level} exists.`, ephemeral: true }); }
-
-                // Remove milestone level from the database
+            
+                if (!existingMilestone) {
+                    return interaction.reply({ content: `No milestone for level ${level} exists.`, ephemeral: true });
+                }
+            
+                // Fetch the role associated with the milestone level
+                const roleToRemove = interaction.guild.roles.cache.get(existingMilestone.reward);
+            
+                if (!roleToRemove) {
+                    return interaction.reply({ content: 'The role associated with this milestone does not exist in the server.', ephemeral: true });
+                }
+            
+                // Check if the user's highest role is above or below the milestone role
+                if (highestRole.position <= roleToRemove.position) {
+                    return interaction.reply({ content: 'You cannot remove a milestone role that is higher or equal to your own highest role.', ephemeral: true });
+                }
+            
+                // If all checks are passed, remove milestone level from the database
                 await existingMilestone.destroy();
-
+            
                 const embed = new EmbedBuilder()
                     .setColor(0x008080)
                     .setTitle('Milestone Removed')
                     .setDescription(`Milestone for level ${level} has been removed.`)
                     .setTimestamp();
-
-                return interaction.reply({ embeds: embed });
-            } catch (error) { return interaction.reply({ content: 'An error occurred while removing the milestone. Please try again later.', ephemeral: true }); }
+            
+                return interaction.reply({ embeds: [embed] });
+            } catch (error) {
+                console.error('Error removing milestone:', error);
+                return interaction.reply({ content: 'An error occurred while removing the milestone. Please try again later.', ephemeral: true });
+            }            
         }
     },
 

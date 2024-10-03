@@ -65,11 +65,13 @@ module.exports = {
     
             // Fetch the bans from the guild
             try {
+                await interaction.deferReply({ ephemeral: true });
+                
                 const bans = await interaction.guild.bans.fetch();
                 const bannedUser = bans.get(user.id);
     
                 if (!bannedUser) {
-                    return interaction.reply({ content: 'The specified user is not banned', ephemeral: true });
+                    return interaction.editReply({ content: 'The specified user is not banned', ephemeral: true });
                 }
     
                 // Unban the user
@@ -81,10 +83,16 @@ module.exports = {
                     .setColor(0x2ECC71)
                     .addFields({ name: 'Reason', value: reason });
     
-                return interaction.reply({ embeds: [embed] });
+                return interaction.editReply({ embeds: [embed] });
             } catch (err) {
                 console.error('Error unbanning user:', err);
-                return interaction.reply({ content: 'An error occurred while trying to unban the user', ephemeral: true });
+            
+                // Check if the interaction is already acknowledged
+                if (interaction.replied || interaction.deferred) {
+                    return interaction.followUp({ content: 'An error occurred while trying to unban the user', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: 'An error occurred while trying to unban the user', ephemeral: true });
+                }
             }
         }
     },   

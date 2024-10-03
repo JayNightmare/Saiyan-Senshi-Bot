@@ -143,10 +143,7 @@ module.exports = {
     
                 const userId = user.id;
 
-                console.log(`Part 1: Updated by ${user.username}`);
                 await updateUserBio(serverId, userId, bio);
-                console.log(`Part 2: Updated by ${user.username}`);
-                // Confirmation message
                 const confirmEmbed = new EmbedBuilder()
                     .setColor(0x00FF00)
                     .setTitle("Bio Updated")
