@@ -291,6 +291,11 @@ const commands = [
                 .setDescription('The level at which the milestone will be reached')
                 .setRequired(true)),
 
+    new SlashCommandBuilder()
+        .setName('view-milestones')
+        .setDescription('View the milestone levels and their associated roles')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles),
+
     // //
 
     new SlashCommandBuilder()
@@ -530,6 +535,7 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'setup-levelup-channel') { console.log(`setup levelup command ran`); await configCommands.setLevelupChannel.execute(interaction, options); }
     // //
     if (commandName === 'remove-milestone') { console.log(`rm milestone command ran`); await milestoneCommands.removeMilestone.execute(interaction, options); }
+    if (commandName === 'view-milestones') { console.log(`list milestone command ran`); await milestoneCommands.viewMilestones.execute(interaction); }
     // //
     if (commandName === 'help') { console.log(`help command ran`); await communityCommands.help.execute(interaction); }   
 

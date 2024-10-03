@@ -104,15 +104,21 @@ const MilestoneLevel = sequelize.define('MilestoneLevel', {
     guildId: {
         type: DataTypes.STRING,
         allowNull: false,
-        primaryKey: true,
     },
     level: {
         type: DataTypes.INTEGER,
         allowNull: false,
     },
     reward: {
-        type: DataTypes.STRING, // e.g., role ID, badge name
+        type: DataTypes.STRING,
         allowNull: false,
+    }
+}, {
+    // Composite unique constraint
+    uniqueKeys: {
+        actions_unique: {
+            fields: ['guildId', 'level']
+        }
     }
 });
 

@@ -307,6 +307,9 @@ module.exports = {
             try {
                 // Convert duration from minutes to milliseconds
                 const durationMs = duration * 60 * 1000;
+
+                // if duration is greater than 40320 mintues, return with "too long"
+                if (duration > 40320) return interaction.reply('Duration cannot exceed 40320 minutes');
     
                 // Apply the timeout
                 await member.timeout(durationMs, reason);
