@@ -12,7 +12,7 @@ const {
     AuditLogEvent
 } = require('discord.js');
 
-const { EmbedBuilder, SelectMenuBuilder, ActionRowBuilder } = require('@discordjs/builders');
+const { EmbedBuilder } = require('@discordjs/builders');
 
 const client = new Client({ 
     intents: [
@@ -367,25 +367,58 @@ client.once('ready', async () => {
             }
         }
 
-        guilds.forEach(async (guild) => {
+        // Load reaction roles before registering slash commands
+        await loadReactionRoles();
+        const reactionRoleConfigurations = getReactionRoleConfigurations();
+        console.log('Reaction role configurations loaded:', reactionRoleConfigurations);
+
+        // List all reaction roles to the console
+        for (const [guildId, configs] of reactionRoleConfigurations.entries()) {
+            for (const config of configs) {
+                try {
+                    const guild = await client.guilds.fetch(guildId);
+                    
+                    console.log(`Fetching channel ID: ${config.channelId} for guild ${guild.name}`);
+                    const channel = await guild.channels.fetch(config.channelId); // Explicitly fetch the channel
+    
+                    if (!channel) {
+                        console.log(`Channel not found: ${config.channelId} in guild ${guild.name}`);
+                        continue;
+                    }
+    
+                    const message = await channel.messages.fetch(config.messageId);
+    
+                    // Iterate through the reactions on the message using a proper async loop
+                    for (const reaction of message.reactions.cache.values()) {
+                        const users = await reaction.users.fetch();
+                        for (const user of users.values()) {
+                            if (!user.bot) {
+                                console.log(`Reaction found from user ${user.tag} on message ${message.id}`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error processing guild ${guildId} and config ${config}:`, error);
+                }
+            }
+        }
+
+        // Register slash commands for each guild dynamically
+        for (const guild of guilds.values()) {
             try {
-                // Register slash commands for each guild dynamically
                 await rest.put(
                     Routes.applicationGuildCommands(client.user.id, guild.id),
                     { body: commands }
                 );
-
-                // console.log(`Successfully registered commands for guild: ${guild.id}`);
+                console.log(`Successfully registered commands for guild: ${guild.id}`);
             } catch (error) {
                 console.error(`Error registering commands for guild: ${guild.id}`, error);
             }
-        });
-
-        await loadReactionRoles();
+        }
 
         console.log('Successfully reloaded application (/) commands');
     } catch (error) {
-        console.error(error);
+        console.error('An error occurred during initialization:', error);
     }
 });
 
@@ -644,15 +677,37 @@ client.on('messageCreate', async (message) => {
 // //
 
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
-    // Check if the reaction is in a guild and not from a bot
-    if (reaction.message.partial) await reaction.message.fetch();
-    if (reaction.partial) await reaction.fetch();
+    // // Check if the reaction is in a guild and not from a bot
     if (user.bot) return;
-    if (!reaction.message.guild) return;
+
+    try {
+        // Fetch partial reactions and messages
+        if (reaction.partial) await reaction.fetch();
+        if (reaction.message.partial) await reaction.message.fetch();
+    } catch (err) {
+        console.error('Error fetching partial reaction or message:', err);
+        return; // Skip further processing if fetch fails
+    }
 
     const guildId = reaction.message.guild.id;
 
     try {
+        const existingRole = await ReactionRole.findOne({
+            where: {
+                messageId: reaction.message.id,
+            },
+        });
+
+        console.log(existingRole);
+
+        if (!existingRole) {
+            console.log(`No reaction role configuration found for message ID: ${reaction.message.id} in guild: ${guildId}`);
+            return;
+        }
+
+        console.log(`Reaction role configuration found:`);
+        console.log(existingRole);
+
         const reactionRoleConfigurations = getReactionRoleConfigurations();
 
         // Get the configurations for this guild
@@ -734,16 +789,6 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
         // Remove the role from the member
         await member.roles.remove(role);
-
-        // Remove the record from the database
-        await ReactionRole.destroy({
-            where: {
-                guildId: guildId,
-                messageId: reaction.message.id,
-                emoji: emojiIdentifier
-            }
-        });
-
     } catch (error) {
         return;
     }
