@@ -11,7 +11,9 @@ const {
     ChannelType, 
     PermissionsBitField, 
     AuditLogEvent, 
-    Emoji } = require('discord.js');
+    Emoji, 
+    ActionRowBuilder,
+    StringSelectMenuBuilder} = require('discord.js');
 
 const client = new Client({ 
     intents: [
@@ -467,7 +469,129 @@ client.on('interactionCreate', async interaction => {
     // //
     if (commandName === 'remove-milestone') { await milestoneCommands.removeMilestone.execute(interaction, options); }
     // //
-    if (commandName === 'help') { await communityCommands.help.execute(interaction); } 
+    if (commandName === 'help') {
+        try {
+            const options = [
+                {
+                    label: 'Admin Commands',
+                    description: 'Commands for managing server settings',
+                    value: 'admin_commands',
+                },
+                {
+                    label: 'Community Commands',
+                    description: 'Commands for community interactions',
+                    value: 'community_commands',
+                },
+                {
+                    label: 'Configuration Commands',
+                    description: 'Commands for configuring the bot',
+                    value: 'configuration_commands',
+                },
+                {
+                    label: 'Help With Commands',
+                    description: 'Help with commands for the bot',
+                    value: 'command_help',
+                }
+            ];
+    
+            // Check if the user is the owner and add the Owner Commands option
+            if (interaction.member.id === process.env.OWNER) {
+                options.push({
+                    label: 'Owner Commands',
+                    description: 'Commands only available to the bot owner',
+                    value: 'owner_commands',
+                });
+            }
+    
+            // Create the select menu and action row
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new StringSelectMenuBuilder()
+                        .setCustomId('help_menu')
+                        .setPlaceholder('Select a category')
+                        .addOptions(options),
+                );
+    
+            // Create the initial embed
+            const optionEmbed = new EmbedBuilder()
+                .setColor(0x3498db)
+                .setTitle("Help")
+                .setDescription("Choose an option below to see commands");
+        
+            // Reply with the embed and select menu
+            await interaction.reply({ embeds: [optionEmbed], components: [row] });
+        } catch (error) {
+            console.error('An error occurred while creating the help embed:', error);
+            interaction.reply({ content: 'An error occurred while generating the help message. Please contact the admin. **Error code: 0hb**', ephemeral: true });
+        }
+    }
+    if (!interaction.isStringSelectMenu()) return;
+    if (interaction.customId === 'help_menu') {
+        console.log('Menu Pressed')
+        // const serverId = interaction.guild.id;
+        let embed;
+        switch (interaction.values[0]) {
+            case 'admin_commands':
+                embed = new EmbedBuilder()
+                    .setColor(0x3498db)
+                    .setTitle('Admin Commands')
+                    .setDescription(`
+                    • List of admin commands
+                    `);
+                break;
+        
+            case 'community_commands':
+                embed = new EmbedBuilder()
+                    .setColor(0x3498db)
+                    .setTitle('Community Commands')
+                    .setDescription(`
+                    • List of community commands
+                    `);
+                break;
+        
+            case 'configuration_commands':
+                embed = new EmbedBuilder()
+                    .setColor(0x3498db)
+                    .setTitle('Configuration Commands')
+                    .setDescription(`
+                    • List of configuration commands
+                    `);
+                break;
+        
+            case 'owner_commands':
+                // Check if the user is the bot owner
+                if (interaction.user.id !== process.env.OWNER) {
+                    return interaction.reply({ content: 'You do not have permission to view this section.', ephemeral: true });
+                }
+                embed = new EmbedBuilder()
+                    .setColor(0xff0000)
+                    .setTitle('Owner Commands')
+                    .setDescription(`
+                    • List of owner commands
+                    `);
+                break;
+    
+            case 'command_help':
+                embed = new EmbedBuilder()
+                    .setColor(0xffa500)
+                    .setTitle('Help With Commands')
+                    .setDescription(`
+                        All commands use slash commands. If you want a new command or feature, please contact the [bot owner](https://discord.com/invite/W3bZxykvAX).
+                    `);
+                break;
+        
+            default:
+                return;
+        }
+    
+        // Validate and send the embed
+        if (embed?.data && (embed.data.title || embed.data.description)) {
+            await interaction.update({ embeds: [embed], components: [] }); // Use update to edit the original message
+        } else {
+            console.error('Attempted to send an embed with missing or invalid fields.');
+            await interaction.reply({ content: 'There was an error generating the command list. Please try again later.', ephemeral: true });
+        }
+    } 
 });
 
 // //
