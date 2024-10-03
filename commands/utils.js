@@ -34,8 +34,8 @@ async function manageRoles(member, level, guild, message) {
 // //
 
 // Get specific user data
-async function getUserData(guildId, id) {
-    const userData = await User.findOne({where: { guildId, id }});
+async function getUserData(guildId, userId) {
+    const userData = await User.findOne({ where: { guildId, userId }});
     return userData;
 }
 
@@ -46,21 +46,20 @@ async function getUserCount(guildId) {
 }
 
 // Set User Bio
-async function updateUserBio(guildId, id, bio) {
-    const setBio = await User.findOne({ where: { guildId, id, bio } });
-    if (setBio) {
-        await User.update({ bio }, { where: { guildId, id } });
-    } else {
-        await User.create({ guildId, id, bio });
-    }
+async function updateUserBio(guildId, userId, bio) {
+    const setBio = await User.findOne({ where: { guildId, userId } });
+    
+    if (setBio) { await User.update({ bio }, { where: { guildId, userId } }); } 
+    else { await User.create({ guildId, userId, bio }); }
     return bio;
 }
+
 
 // //
 
 // Get all Server data
-async function getServerData(guildId) {
-    const serverData = await Server.findOne({where: { guildId }});
+async function getServerData(serverId) {
+    const serverData = await Server.findOne({ where: { serverId }});
     return serverData;
 }
 
@@ -110,7 +109,7 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
 
                 if (rankUpChannel) {
                     const embed = new EmbedBuilder()
-                        .setTitle('Milestone Achieved!')
+                        .setTitle('Transformation!')
                         .setDescription(`🎉 <@${member.user.id}> has been granted <@&${role.id}> for reaching level ${milestone.level}! 🎉`)
                         .setColor(0x008080);
 
@@ -122,8 +121,8 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
         // Send a message even if no milestone role was granted
         if (!roleGranted && rankUpChannel) {
             const embed = new EmbedBuilder()
-                .setTitle('Keep Going!')
-                .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep participating to reach the next milestone!`)
+                .setTitle('Keep Training!')
+                .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep training to reach the next transformation!`)
                 .setColor(0xFFD700);
 
             rankUpChannel.send({ embeds: [embed] });

@@ -33,7 +33,7 @@ module.exports = {
                 serverId = interaction.guild.id;
 
                 // Fetch user data from the database
-                let userData = await User.findOne({ where: { id: user.id, guildId: serverId } });
+                let userData = await User.findOne({ where: { userId: user.id, guildId: serverId } });
 
                 // Check if user is in the server
                 if (!interaction.guild.members.cache.has(user.id)) {
@@ -43,7 +43,7 @@ module.exports = {
                 if (!userData) {
                     // Create default user data if none exists
                     userData = await User.create({
-                        id: user.id,
+                        userId: user.id,
                         username: user.username,
                         guildId: serverId,
                         level: 0,
@@ -133,7 +133,7 @@ module.exports = {
                 user = interaction.user;
                 
                 serverId = interaction.guild.id;
-                const serverConfigsData = await getServerConfigsData(serverId);
+                const serverConfigsData = await getServerData(serverId);
                 const allowedChannelId = serverConfigsData?.allowedChannel;
                 let allowedChannel = interaction.channel;
     
@@ -143,9 +143,9 @@ module.exports = {
     
                 const userId = user.id;
 
-                // Update the bio in the database
+                console.log(`Part 1: Updated by ${user.username}`);
                 await updateUserBio(serverId, userId, bio);
-
+                console.log(`Part 2: Updated by ${user.username}`);
                 // Confirmation message
                 const confirmEmbed = new EmbedBuilder()
                     .setColor(0x00FF00)

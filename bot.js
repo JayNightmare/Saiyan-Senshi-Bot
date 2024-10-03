@@ -91,6 +91,10 @@ const commands = [
                 .setRequired(true)
     ),
 
+    new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('Get help with the bot'),
+
     // //
 
     // Admin Commands
@@ -226,16 +230,18 @@ const commands = [
 
     // //
 
+    // Configuration Setup Commands
+
     new SlashCommandBuilder() 
         .setName('setup-mute-role')
         .setDescription('Setup a mute role for the server')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
     ,
 
     new SlashCommandBuilder()
         .setName('setup-logging-channel')
         .setDescription('Setup a logging channel for the server')
-        .setDefaultMemberPermissions(PermissionsBitField.Flags.BanMembers)
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('The channel to send logs to')
@@ -244,6 +250,7 @@ const commands = [
         
     new SlashCommandBuilder()
         .setName('setup-welcome-channel')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
         .setDescription('Sets the channel for welcoming new members')
         .addChannelOption(option =>
             option.setName('channel')
@@ -253,6 +260,8 @@ const commands = [
 
     new SlashCommandBuilder()
         .setName('setup-reaction-role')
+        .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageRoles)
+
         .setDescription('Sets up a reaction role message')
         .addChannelOption(option =>
             option.setName('channel')
@@ -281,17 +290,12 @@ const commands = [
             option.setName('level')
                 .setDescription('The level at which the milestone will be reached')
                 .setRequired(true)),
-    
-    // //
-
-    new SlashCommandBuilder()
-        .setName('help')
-        .setDescription('Get help with the bot'),
 
     // //
 
     new SlashCommandBuilder()
     .setName('setup-levelup-channel')
+    .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
     .setDescription('Set the channel where level up messages will be sent.')
     .addChannelOption(option => 
         option.setName('channel')
@@ -313,11 +317,17 @@ client.once('ready', async () => {
 
         for (const guild of guilds.values()) {
             try {
-                // Check if the guild is already in the database
-                const [server, created] = await Server.findOrCreate({
-                    where: { serverId: guild.id },
-                    defaults: {
+                // Check if the server already exists in the database
+                const existingServer = await Server.findOne({ where: { serverId: guild.id } });
+                
+                // If the server already exists, skip creation
+                if (existingServer) {
+                    console.log(`Server ${guild.name} already exists in the database.`);
+                } else {
+                    // Create default entries for the server
+                    await Server.create({
                         serverId: guild.id,
+                        serverName: guild.name,
                         textChannelId: null,
                         loggingChannelId: null,
                         welcomeChannelId: null,
@@ -325,13 +335,7 @@ client.once('ready', async () => {
                         logLevel: 'low',
                         mute_role_level_1_id: null,
                         mute_role_level_2_id: null
-                    }
-                });
-    
-                if (created) {
-                    console.log(`Added new server to database: ${guild.name} (${guild.id})`);
-                } else {
-                    console.log(`Server already exists in database: ${guild.name} (${guild.id})`);
+                    });
                 }
             } catch (error) {
                 console.error(`Error adding guild to database: ${guild.name} (${guild.id})`, error);
@@ -345,6 +349,7 @@ client.once('ready', async () => {
                     Routes.applicationGuildCommands(client.user.id, guild.id),
                     { body: commands }
                 );
+
                 // console.log(`Successfully registered commands for guild: ${guild.id}`);
             } catch (error) {
                 console.error(`Error registering commands for guild: ${guild.id}`, error);
@@ -368,20 +373,21 @@ client.on(Events.GuildCreate, async guild => {
         if (existingServer) {
             console.log(`Server ${guild.name} already exists in the database.`);
             return;
+        } else {
+            // Create default entries for the server
+            await Server.create({
+                serverId: guild.id,
+                serverName: guild.name,
+                textChannelId: null,
+                loggingChannelId: null,
+                welcomeChannelId: null,
+                rankUpChannelId: null,
+                logLevel: 'low',
+                mute_role_level_1_id: null,
+                mute_role_level_2_id: null
+            });
         }
 
-        // Create default entries for the server
-        await Server.create({
-            serverId: guild.id,
-            serverName: guild.name,
-            textChannelId: null,
-            loggingChannelId: null,
-            welcomeChannelId: null,
-            rankUpChannelId: null,
-            logLevel: 'low',
-            mute_role_level_1_id: null,
-            mute_role_level_2_id: null
-        });
 
         console.log(`Default entries created for server ${guild.name} (ID: ${guild.id})`);
 
@@ -499,37 +505,35 @@ client.on('interactionCreate', async interaction => {
     const { commandName, options, guildId } = interaction;    
     
     // Community commands
-    if (commandName === 'profile') { await communityCommands.profile.execute(interaction); }
-    if (commandName ==='setbio') { await communityCommands.setBio.execute(interaction, options); }
+    if (commandName === 'profile') { console.log(`profile command ran`); await communityCommands.profile.execute(interaction); }
+    if (commandName ==='setbio') { console.log(`setbio command ran`); await communityCommands.setBio.execute(interaction, options); }
 
     // Admin commands
-    if (commandName === 'mod-ban') { await adminCommands.ban.execute(interaction, options); }
-    if (commandName === 'mod-unban') { await adminCommands.unban.execute(interaction, options) }
+    if (commandName === 'mod-ban') { console.log(`ban command ran`); await adminCommands.ban.execute(interaction, options); }
+    if (commandName === 'mod-unban') { console.log(`unban command ran`); await adminCommands.unban.execute(interaction, options) }
     // //
-    if (commandName === 'mod-kick') { await adminCommands.kick.execute(interaction, options); }
+    if (commandName === 'mod-kick') { console.log(`kick command ran`); await adminCommands.kick.execute(interaction, options); }
     // //
-    if (commandName === 'mod-warn') { await adminCommands.warn.execute(interaction, options); }
-    if (commandName ==='mod-remove-warning') { await adminCommands.removeWarning.execute(interaction, options); }
+    if (commandName === 'mod-warn') { console.log(`warn command ran`); await adminCommands.warn.execute(interaction, options); }
+    if (commandName ==='mod-remove-warning') { console.log(`rm warn command ran`); await adminCommands.removeWarning.execute(interaction, options); }
     // //
-    if (commandName === 'mod-timeout') { await adminCommands.timeout.execute(client, interaction, options, guildId); }
-    if (commandName ==='mod-remove-timeout') { await adminCommands.removetimeout.execute(interaction, options); }
+    if (commandName === 'mod-timeout') { console.log(`timeout command ran`); await adminCommands.timeout.execute(client, interaction, options, guildId); }
     // //
-    if (commandName === 'mod-mute') { await adminCommands.mute.execute(interaction, options, guildId); }
-    if (commandName === 'mod-unmute') { await adminCommands.unmute.execute(interaction, options); }
+    if (commandName === 'mod-mute') { console.log(`mute command ran`); await adminCommands.mute.execute(interaction, options, guildId); }
+    if (commandName === 'mod-unmute') { console.log(`unmute command ran`); await adminCommands.unmute.execute(interaction, options); }
     // //
-    if (commandName === 'setup-mute-role') { await configCommands.setupMuteRole.execute(interaction, options); }
-    if (commandName ==='setup-logging-channel') { await configCommands.setupLoggingChannel.execute(interaction, options); }
-    if (commandName === 'setup-welcome-channel') { await configCommands.setupWelcomeChannel.execute(interaction, options); }
-    if (commandName === 'setup-reaction-role') { await configCommands.setupReactionRole.execute(interaction, options); }
-    if (commandName === 'setup-milestone') { await milestoneCommands.setupMilestone.execute(interaction, options); }
-    if (commandName === 'setup-levelup-channel') { await configCommands.setLevelupChannel.execute(interaction, options); }
+    if (commandName === 'setup-mute-role') { console.log(`setup mute command ran`); await configCommands.setupMuteRole.execute(interaction, options); }
+    if (commandName ==='setup-logging-channel') { console.log(`setup log command ran`); await configCommands.setupLoggingChannel.execute(interaction, options); }
+    if (commandName === 'setup-welcome-channel') { console.log(`setup welcome command ran`); await configCommands.setupWelcomeChannel.execute(interaction, options); }
+    if (commandName === 'setup-reaction-role') { console.log(`setup reaction command ran`); await configCommands.setupReactionRole.execute(interaction, options); }
+    if (commandName === 'setup-milestone') { console.log(`setup milestone command ran`); await milestoneCommands.setupMilestone.execute(interaction, options); }
+    if (commandName === 'setup-levelup-channel') { console.log(`setup levelup command ran`); await configCommands.setLevelupChannel.execute(interaction, options); }
     // //
-    if (commandName === 'remove-milestone') { await milestoneCommands.removeMilestone.execute(interaction, options); }
+    if (commandName === 'remove-milestone') { console.log(`rm milestone command ran`); await milestoneCommands.removeMilestone.execute(interaction, options); }
     // //
-    if (commandName === 'help') { await communityCommands.help.execute(interaction); }   
+    if (commandName === 'help') { console.log(`help command ran`); await communityCommands.help.execute(interaction); }   
 
     if (interaction.customId === 'help_menu') { await help_menu_selected.help_menu_selected.execute(interaction) }
-    return; // Ensure the rest of the code does not run for select menu interactions
 });
 
 // //
@@ -545,15 +549,20 @@ client.on('messageCreate', async (message) => {
 
     // Fetch or create user data from the database
     let userData = await getUserData(guildId, userId);
-    if (!userData) {
-        userData = await User.create({
-            userId: userId,
-            username: message.author.username,
-            guildId: guildId,
-            bio: null,
-            level: 0,
-            xp: 0
-        });
+    try {
+        if (!userData) {
+            userData = await User.create({
+                userId: userId,
+                username: message.author.username,
+                guildId: guildId,
+                bio: null,
+                level: 0,
+                xp: 0,
+                warnings: null,
+            });
+        }
+    } catch(err) {
+        console.error('Error getting or creating user data:', err);
     }
 
     await giveRoleToUserIfNoneArrange(message.member, guildId, userData.level);
@@ -727,5 +736,4 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 // //
 
 setInterval(() => processLogs(client), 180000);
-// Login to Discord
 client.login(process.env.LIVE_TOKEN);

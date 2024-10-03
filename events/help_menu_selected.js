@@ -11,7 +11,14 @@ module.exports = {
                         embed = new EmbedBuilder()
                             .setColor(0x3498db)
                             .setTitle("Admin Commands").setDescription(`
-                            • List of admin commands
+                            • /mod-ban
+                            • /mod-unban
+                            • /mod-kick
+                            • /mod-warn
+                            • /mod-remove-warning
+                            • /mod-timeout
+                            • /mod-mute
+                            • /mod-unmute
                             `);
                         break;
 
@@ -19,7 +26,9 @@ module.exports = {
                         embed = new EmbedBuilder()
                             .setColor(0x3498db)
                             .setTitle("Community Commands").setDescription(`
-                            • List of community commands
+                            • /help - All Command in the bot
+                            • /setbio - set your bio for your profile
+                            • /profile - Check out your xp and level
                             `);
                         break;
 
@@ -27,7 +36,13 @@ module.exports = {
                         embed = new EmbedBuilder()
                             .setColor(0x3498db)
                             .setTitle("Configuration Commands").setDescription(`
-                            • List of configuration commands
+                            • /setup-mute-role
+                            • /setup-logging-channel
+                            • /setup-welcome-channel
+                            • /setup-reaction-role
+                            • /setup-milestone
+                            • /remove-milestone
+                            • /setup-levelup-channel
                             `);
                         break;
 

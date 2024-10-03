@@ -15,6 +15,7 @@ module.exports = {
         execute: async (interaction) => {
             // Save the channel ID to your database for the server
             const serverId = interaction.guild.id;
+            const serverName = interaction.guild.name; // Get the server name
             const user = interaction.user;
             
             logEvent(serverId, `Set Up Welcome Channel Was Run by <@${user.id}>`, 'low');
@@ -28,16 +29,16 @@ module.exports = {
                 return interaction.reply({ content: 'Please select a valid text channel.', ephemeral: true });
             }
     
-            
             try {
-                // Update or create the server entry with the welcome channel ID
+                // Update or create the server entry with the welcome channel ID and server name
                 await Server.upsert({
                     serverId: serverId,
+                    serverName: serverName, // Include serverName here
                     welcomeChannelId: channel.id
                 }, {
                     where: { serverId: serverId }
                 });
-
+    
                 const embed = new EmbedBuilder()
                     .setColor('#0099ff')
                     .setTitle('Welcome Channel Set')
@@ -50,7 +51,7 @@ module.exports = {
                 return interaction.reply({ content: 'An error occurred while setting the welcome channel.', ephemeral: true });
             }
         }
-    },
+    },    
 
     // //
 
@@ -285,11 +286,13 @@ module.exports = {
             // Get the channel option from the command
             const channel = interaction.options.getChannel('channel');
             const guildId = interaction.guild.id;
+            const serverName = interaction.guild.name; // Get the server name
     
             try {
                 // Update or create the server configuration with the rank up channel
                 await Server.upsert({
                     serverId: guildId,
+                    serverName: serverName,
                     rankUpChannelId: channel.id
                 });
     

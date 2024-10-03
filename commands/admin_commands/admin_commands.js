@@ -174,9 +174,9 @@ module.exports = {
             try {
                 // Fetch or create the user entry in the database
                 userData = await User.findOrCreate({
-                    where: { id: user.id, guildId: interaction.guild.id },
+                    where: { userId: user.id, guildId: interaction.guild.id },
                     defaults: {
-                        id: user.id,
+                        userId: user.id,
                         username: user.username,
                         guildId: interaction.guild.id,
                         level: 0,
@@ -234,9 +234,9 @@ module.exports = {
             try {
                 // Fetch or create the user entry in the database
                 userData = await User.findOrCreate({
-                    where: { id: user.id, guildId: interaction.guild.id },
+                    where: { userId: user.id, guildId: interaction.guild.id },
                     defaults: {
-                        id: user.id,
+                        userId: user.id,
                         username: user.username,
                         guildId: interaction.guild.id,
                         level: 0,
