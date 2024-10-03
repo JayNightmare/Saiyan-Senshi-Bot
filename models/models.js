@@ -131,6 +131,10 @@ const ReactionRole = sequelize.define('ReactionRoles', {
         type: DataTypes.STRING,
         allowNull: false,
     },
+    channelId: {
+        type: DataTypes.STRING,
+        allowNull: false,
+    },
     emoji: {
         type: DataTypes.STRING,
         allowNull: false,
