@@ -759,7 +759,6 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
     }
 });
 
-// Assuming you have this function in your reaction remove logic
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
     // Check if the reaction is in a guild and not from a bot
     if (reaction.message.partial) await reaction.message.fetch();

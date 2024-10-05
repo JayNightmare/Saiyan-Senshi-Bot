@@ -1,38 +1,10 @@
 const { EmbedBuilder, Emoji, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { User } = require('../../models/models.js'); // Import the Sequelize User model
-const { logEvent, processLogs } = require('../../events/logEvents.js');
-
-const {
-    createEmbed
-} = require('../Utils_Functions/utils-embeds.js');
-
-const {
-    manageRoles
-} = require('../Utils_Functions/utils-roles.js');
-
-const {
-    getUserData,
-    getUserCount
-} = require('../Utils_Functions/utils-user.js');
+const { logEvent } = require('../../events/logEvents.js');
 
 const {
     getServerData
 } = require('../Utils_Functions/utils-server.js');
-
-const {
-    // Milestone Roles
-    checkAndGrantMilestoneRoles,
-    giveRoleToUserIfNoneArrange,
-
-    // Milestone Levels
-    isMilestoneLevel
-} = require('../Utils_Functions/utils-milestones.js');
-
-const {
-    // Reaction Roles
-    saveReactionRole,
-    loadReactionRoles
-} = require('../Utils_Functions/utils-reactions.js');
 
 module.exports = {
     profile: { 
