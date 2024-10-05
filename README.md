@@ -29,7 +29,6 @@
 <br/>
 
 <div align="center">
-    <p>This bot  is currently in development. Please do not use it in production.</p>
     <p>Bot was made for SailorMoon/DBZ Village Discord Server as a commission. If you want your own custom Discord Bot, contact me via</p> 
 </div>
 
