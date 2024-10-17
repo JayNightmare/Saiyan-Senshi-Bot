@@ -2,8 +2,13 @@ const { EmbedBuilder } = require('discord.js');
 const { MilestoneLevel, Server } = require('../../models/models.js');
 const { Op } = require('sequelize');
 
+const { getUserData } = require('./utils-user.js');
+
 async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
     try {
+        const userId = message.author.id;
+        let userData = await getUserData(guildId, userId);
+
         // Fetch all milestone levels up to the user's current level for this guild
         const milestones = await MilestoneLevel.findAll({
             where: {
@@ -59,6 +64,7 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
                             .setColor(0x008080);
 
                         rankUpChannel.send({ embeds: [embed] });
+                        console.log(`Sent message to ${rankUpChannel.name} for user ${member.user.displayName}`);
                     }
                 } else {
                     if (rankUpChannel) {
@@ -81,7 +87,7 @@ Keep training to reach the next transformation!
             if (!roleGranted && rankUpChannel) {
                 const embed = new EmbedBuilder()
                     .setTitle('Keep Training!')
-                    .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep training to reach the next transformation!`)
+                    .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${userData.level + 1}. Keep training to reach the next transformation!`)
                     .setColor(0xFFD700);
     
                 rankUpChannel.send({ embeds: [embed] });

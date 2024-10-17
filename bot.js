@@ -681,7 +681,7 @@ client.on('messageCreate', async (message) => {
 
     // Save updated user data to the database
     await userData.save();
-}); 
+});
 
 // //
 
