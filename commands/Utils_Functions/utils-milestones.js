@@ -101,6 +101,7 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
             const embed = new EmbedBuilder()
                 .setTitle('Keep Training!')
                 .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${userData.level + 1}. Keep training to reach the next transformation!`)
+                .setImage(`https://tenor.com/en-GB/view/dbz-goku-exercise-sit-ups-gif-13136578.gif`)
                 .setColor(0xFFD700);
 
             rankUpChannel.send({ embeds: [embed] });
