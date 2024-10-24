@@ -342,7 +342,7 @@ client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
     try {
-        console.log('Started refreshing application (/) commands');
+        console.log('----------------\nStarted refreshing application (/) commands');
 
         // Fetch all guilds the bot is in
         const guilds = await client.guilds.fetch();
@@ -614,74 +614,81 @@ client.on('interactionCreate', async interaction => {
 const cooldowns = new Map();
 
 client.on('messageCreate', async (message) => {
-    // Skip if user is bot
-    if (message.author.bot) return;
-    const userId = message.author.id;
-    const guildId = message.guild.id;
-
-    // Fetch or create user data from the database
-    let userData = await getUserData(guildId, userId);
     try {
-        if (!userData) {
-            userData = await User.create({
-                userId: userId,
-                username: message.author.username,
-                guildId: guildId,
-                bio: null,
-                level: 0,
-                xp: 0,
-                warnings: null,
-            });
+        // Skip if user is bot
+        console.log('Message Create Event Triggered');
+        if (message.author.bot) return;
+        console.log('Processing user message...');
+        const userId = message.author.id;
+        const guildId = message.guild.id;
+
+        // Fetch or create user data from the database
+        let userData = await getUserData(guildId, userId);
+        try {
+            if (!userData) {
+                userData = await User.create({
+                    userId: userId,
+                    username: message.author.username,
+                    guildId: guildId,
+                    bio: null,
+                    level: 0,
+                    xp: 0,
+                    warnings: null,
+                });
+            }
+        } catch(err) {
+            console.error('Error getting or creating user data:', err);
         }
-    } catch(err) {
-        console.error('Error getting or creating user data:', err);
-    }
 
-    await giveRoleToUserIfNoneArrange(message.member, guildId, userData.level);
+        await giveRoleToUserIfNoneArrange(message.member, guildId, userData.level);
 
-    // Check for cooldowns (60 seconds)
-    const now = Date.now();
-    const cooldownAmount = 60 * 1000; // Cooldown set to 1 minute
+        // Check for cooldowns (60 seconds)
+        const now = Date.now();
+        const cooldownAmount = 60 * 1000; // Cooldown set to 1 minute
 
-    if (cooldowns.has(userId)) {
-        const expirationTime = cooldowns.get(userId) + cooldownAmount;
-        if (now < expirationTime) {
-            const timeLeft = (expirationTime - now) / 1000;
-            console.log(`User ${message.author.username} is on cooldown. ${timeLeft.toFixed(1)} seconds remaining.`);
-            return;
+        if (cooldowns.has(userId)) {
+            const expirationTime = cooldowns.get(userId) + cooldownAmount;
+            if (now < expirationTime) {
+                const timeLeft = (expirationTime - now) / 1000;
+                console.log(`User ${message.author.username} is on cooldown. ${timeLeft.toFixed(1)} seconds remaining.`);
+                return;
+            }
         }
+
+        // Set new cooldown
+        cooldowns.set(userId, now);
+
+        // Gain XP (5-10 XP randomly)
+        const xpGain = Math.floor(Math.random() * 5) + 5;
+
+        // Add XP and message count
+        userData.xp += xpGain;
+        userData.totalMessages += 1;
+
+        // Level calculation logic
+        const level = userData.level;
+        const baseMultiplier = 100; // Base XP multiplier
+        const scalingFactor = 1.1; // Scaling factor for level progression
+
+        // XP needed for current and next level
+        const xpNeededForCurrentLevel = Math.floor(level * baseMultiplier * Math.pow(scalingFactor, level));
+        const xpNeededForNextLevel = Math.floor((level + 1) * baseMultiplier * Math.pow(scalingFactor, level + 1));
+        const xpForNextLevel = xpNeededForNextLevel - xpNeededForCurrentLevel;
+
+        if (userData.xp >= xpForNextLevel) {
+            userData.level += 1;
+            userData.xp = 0; // Reset XP after leveling up
+        
+            await checkAndGrantMilestoneRoles(message.member, guildId, userData.level, message);
+        }
+
+        // Save updated user data to the database
+        console.log("Processing user message complete");
+        await userData.save();
+    } catch (error) {
+        console.error('Error handling message:', error);
     }
-
-    // Set new cooldown
-    cooldowns.set(userId, now);
-
-    // Gain XP (5-10 XP randomly)
-    const xpGain = Math.floor(Math.random() * 5) + 5;
-
-    // Add XP and message count
-    userData.xp += xpGain;
-    userData.totalMessages += 1;
-
-    // Level calculation logic
-    const level = userData.level;
-    const baseMultiplier = 100; // Base XP multiplier
-    const scalingFactor = 1.1; // Scaling factor for level progression
-
-    // XP needed for current and next level
-    const xpNeededForCurrentLevel = Math.floor(level * baseMultiplier * Math.pow(scalingFactor, level));
-    const xpNeededForNextLevel = Math.floor((level + 1) * baseMultiplier * Math.pow(scalingFactor, level + 1));
-    const xpForNextLevel = xpNeededForNextLevel - xpNeededForCurrentLevel;
-
-    if (userData.xp >= xpForNextLevel) {
-        userData.level += 1;
-        userData.xp = 0; // Reset XP after leveling up
-    
-        await checkAndGrantMilestoneRoles(message.member, guildId, userData.level, message);
-    }
-
-    // Save updated user data to the database
-    await userData.save();
-}); 
+});
 
 // //
 

@@ -2,8 +2,30 @@ const { EmbedBuilder } = require('discord.js');
 const { MilestoneLevel, Server } = require('../../models/models.js');
 const { Op } = require('sequelize');
 
+const { getUserData } = require('./utils-user.js');
+
 async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
     try {
+        if (!message.author || message.author.bot) return;
+        const userId = message.author.id;
+        console.log(`What is userId = ${userId}`);
+        let userData;
+
+        try {
+            userData = await getUserData(guildId, userId);
+            console.log('User data fetched successfully');
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        }
+        
+        console.log(userData);
+
+        if (!userData) {
+            throw new Error('User data not found');
+        }
+
+        console.log(`Checking milestones for user ${userId} at level ${level}`);
+
         // Fetch all milestone levels up to the user's current level for this guild
         const milestones = await MilestoneLevel.findAll({
             where: {
@@ -14,6 +36,8 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
             },
             order: [['level', 'ASC']] // Order milestones by level in ascending order
         });
+
+        console.log(`Found ${milestones.length} milestones for guild ${guildId}`);
 
         // Check if there's a specific rank-up channel set
         const serverConfig = await Server.findOne({ where: { serverId: guildId } });
@@ -33,12 +57,11 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
         let roleGranted = false;
 
         // Go through each milestone and check if the user has the role
-        
-        // if milestone role exists, go through for loop
         if (milestones.length > 0) {
             for (const milestone of milestones) {
                 const role = member.guild.roles.cache.get(milestone.reward);
                 if (!role) {
+                    console.log(`Role with ID ${milestone.reward} not found.`);
                     continue;
                 }
 
@@ -46,6 +69,10 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
                 if (!member.roles.cache.has(role.id)) {
                     // Add the role if missing
                     await member.roles.add(role);
+                    roleGranted = true;
+
+                    console.log(`Granted role ${role.name} to user ${userId} for reaching level ${milestone.level}`);
+                    console.log(`What is userId = ${userId}`);
 
                     if (rankUpChannel) {
                         const embed = new EmbedBuilder()
@@ -61,31 +88,23 @@ async function checkAndGrantMilestoneRoles(member, guildId, level, message) {
                         rankUpChannel.send({ embeds: [embed] });
                     }
                 } else {
-                    if (rankUpChannel) {
-                        const embed = new EmbedBuilder()
-                            .setTitle('🎉 **Transformation Reached!** 🎉')
-                            .setDescription(`
-**<@${member.user.id}> has been granted <@&${role.id}> for reaching Level ${milestone.level}!**
-
-Keep training to reach the next transformation!
-`)
-                            .setImage(`https://tenor.com/en-GB/view/sailor-moon-anime-moon-prism-power-moon-prism-power-makeup-serena-gif-15851654.gif`)
-                            .setColor(0x008080);
-
-                        rankUpChannel.send({ embeds: [embed] });
-                    }
+                    console.log(`User ${userId} already has role ${role.name}.`);
+                    console.log(`What is userId = ${userId}`);
                 }
             }
         } else {
-            // Send a message even if no milestone role was granted
-            if (!roleGranted && rankUpChannel) {
-                const embed = new EmbedBuilder()
-                    .setTitle('Keep Training!')
-                    .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${level}. Keep training to reach the next transformation!`)
-                    .setColor(0xFFD700);
-    
-                rankUpChannel.send({ embeds: [embed] });
-            }
+            console.log(`No milestones to grant for user ${userId} at level ${level}.`);
+        }
+
+        // Send a message even if no milestone role was granted
+        if (!roleGranted && rankUpChannel) {
+            const embed = new EmbedBuilder()
+                .setTitle('Keep Training!')
+                .setDescription(`Great job, <@${member.user.id}>! You're currently at level ${userData.level + 1}. Keep training to reach the next transformation!`)
+                .setImage(`https://tenor.com/en-GB/view/dbz-goku-exercise-sit-ups-gif-13136578.gif`)
+                .setColor(0xFFD700);
+
+            rankUpChannel.send({ embeds: [embed] });
         }
     } catch (err) {
         console.error(`Error checking and granting milestone roles for user ${member.user.username}:`, err);
