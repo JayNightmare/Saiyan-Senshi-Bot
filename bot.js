@@ -76,8 +76,8 @@ const {
 const adminCommands = require('./commands/admin_commands/admin_commands.js');
 const communityCommands = require('./commands/community_commands/community_commands.js'); 
 const configCommands = require('./commands/config_commands/configs_commands.js');
-const milestoneCommands = require('./commands/milestone_commands/milestone_commands.js');
 const { getReactionRoleConfigurations  } = require('./commands/config_commands/configs_commands.js');
+const milestoneCommands = require('./commands/milestone_commands/milestone_commands.js');
 const help_menu_selected = require('./events/help_menu_selected.js');
 const ownerCommands = require('./commands/owner_commands/owner_commands.js');
 
@@ -568,7 +568,7 @@ O-oh... ... looks like <@${member.user.id}>-sama has left the fight to defend Ea
 // //
 
 client.on('interactionCreate', async interaction => {
-    if (!interaction.isCommand() && interaction.componentType!== 3) return;
+    if (!interaction.isCommand() && interaction.componentType !== 3) return;
     const { commandName, options, guildId } = interaction;    
     
     // Community commands
