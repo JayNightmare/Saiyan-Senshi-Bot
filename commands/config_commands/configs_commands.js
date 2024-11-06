@@ -64,66 +64,105 @@ module.exports = {
             const serverId = interaction.guild.id;
             const user = interaction.user;
             logEvent(serverId, `Set Up Mute Role Was Run by <@${user.id}>`, 'low');
+    
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-                return interaction.reply('You do not have permission to manage roles');
+                const noPermissionEmbed = new EmbedBuilder()
+                    .setColor('#E74C3C')
+                    .setTitle('Permission Denied')
+                    .setDescription('You do not have permission to manage roles.');
+                return interaction.reply({ embeds: [noPermissionEmbed] });
             }
     
+            // Defer the reply to avoid timeout issues
             await interaction.deferReply();
-
-            // Role creation function to avoid duplication
-            const createRole = async (roleName, level) => {
-                const existingRole = interaction.guild.roles.cache.find(r => r.name === roleName);
-                if (!existingRole) {
-                    try {
-                        const role = await interaction.guild.roles.create({
-                            name: roleName,
-                            permissions: [], // No permissions
-                        });
-    
-                        const embed = createEmbed(`Mute Role Level ${level} Created`, `Created new role "${role.name}" with no permissions`, 0x2ECC71);
-                        await interaction.editReply({ embeds: [embed] });
-                        return role;
-                    } catch (err) {
-                        console.error(`Failed to create ${roleName} role:`, err);
-                        const embed = createEmbed('Failed to create new role', `Failed to create "${roleName}" role`, 0xE74C3C);
-                        return interaction.editReply({ embeds: [embed] });
-                    }
-                } else {
-                    const embed = createEmbed(`Mute Role Level ${level} Already Exists`, `Role "${existingRole.name}" already exists`, 0xF1C40F);
-                    await interaction.editReply({ embeds: [embed] });
-                    return existingRole;
-                }
-            };
-    
-            // Create Level 1 role (no talking but can see channels)
-            const muteRoleLevel1 = await createRole('Muted-Level-1', 1);
-    
-            // Create Level 2 role (no talking and cannot see channels)
-            const muteRoleLevel2 = await createRole('Muted-Level-2', 2);
-    
-            // Update all channels with the appropriate permissions
-            interaction.guild.channels.cache.forEach(channel => {
-                // For Level 1: No talking but can see channels
-                channel.permissionOverwrites.create(muteRoleLevel1, {
-                    SendMessages: false,
-                    Connect: false, 
-                }).catch(console.error);
-    
-                // For Level 2: No talking and cannot see channels
-                channel.permissionOverwrites.create(muteRoleLevel2, {
-                    ViewChannel: false, 
-                    SendMessages: false,
-                    Connect: false,
-                }).catch(console.error);
-            });
     
             try {
-                await Server.update(
-                    { mute_role_level_1_id: muteRoleLevel1.id, mute_role_level_2_id: muteRoleLevel2.id },
-                    { where: { serverId: interaction.guild.id } }
-                );
+                // Role creation function to avoid duplication
+                const getOrCreateRole = async (roleName) => {
+                    const existingRole = interaction.guild.roles.cache.find(r => r.name === roleName);
+                    if (existingRole) {
+                        return existingRole;
+                    } else {
+                        const role = await interaction.guild.roles.create({
+                            name: roleName,
+                            permissions: [],
+                        });
+                        const roleCreatedEmbed = new EmbedBuilder()
+                            .setColor('#2ECC71')
+                            .setTitle('Role Created')
+                            .setDescription(`Created new role "${role.name}" with no permissions.`);
+                        await interaction.followUp({ embeds: [roleCreatedEmbed] });
+                        return role;
+                    }
+                };
+    
+                // Get or create Level 1 role (no talking but can see channels)
+                let muteRoleLevel1 = await getOrCreateRole('Muted-Level-1');
+    
+                // Get or create Level 2 role (no talking and cannot see channels)
+                let muteRoleLevel2 = await getOrCreateRole('Muted-Level-2');
+    
+                if (muteRoleLevel1 && muteRoleLevel2) {
+                    // Update all channels with the appropriate permissions
+                    await Promise.all(interaction.guild.channels.cache.map(async (channel) => {
+                        try {
+                            // Level 1: No sending messages but can see channels
+                            const currentPermsLevel1 = channel.permissionOverwrites.cache.get(muteRoleLevel1.id);
+                            if (!currentPermsLevel1 || currentPermsLevel1.deny.has(PermissionsBitField.Flags.SendMessages) === false) {
+                                await channel.permissionOverwrites.edit(muteRoleLevel1, {
+                                    SEND_MESSAGES: false,
+                                    VIEW_CHANNEL: true
+                                });
+                            }
+    
+                            // Level 2: No sending messages and cannot see channels
+                            const currentPermsLevel2 = channel.permissionOverwrites.cache.get(muteRoleLevel2.id);
+                            if (
+                                !currentPermsLevel2 ||
+                                currentPermsLevel2.deny.has(PermissionsBitField.Flags.ViewChannel) === false ||
+                                currentPermsLevel2.deny.has(PermissionsBitField.Flags.SendMessages) === false
+                            ) {
+                                await channel.permissionOverwrites.edit(muteRoleLevel2, {
+                                    VIEW_CHANNEL: false,
+                                    SEND_MESSAGES: false
+                                });
+                            }
+                        } catch (err) {
+                            console.error(`Error setting permissions in channel ${channel.name}:`, err);
+                        }
+                    }));
+    
+                    // Save mute roles in the database
+                    try {
+                        await Server.update(
+                            { mute_role_level_1_id: muteRoleLevel1.id, mute_role_level_2_id: muteRoleLevel2.id },
+                            { where: { serverId: interaction.guild.id } }
+                        );
+                    } catch (err) {
+                        console.error('Error saving mute roles to database:', err);
+                    }
+    
+                    const successEmbed = new EmbedBuilder()
+                        .setColor('#2ECC71')
+                        .setTitle('Mute Roles Set Up')
+                        .setDescription('Mute roles have been set up successfully.');
+                    await interaction.followUp({ embeds: [successEmbed] });
+    
+                } else {
+                    const failureEmbed = new EmbedBuilder()
+                        .setColor('#E74C3C')
+                        .setTitle('Role Creation Failed')
+                        .setDescription('Failed to retrieve or create mute roles. Please try again later.');
+                    await interaction.followUp({ embeds: [failureEmbed] });
+                }
+    
             } catch (err) {
-                console.error('Error saving mute roles to database:', err);
+                console.error('Failed to set up mute roles:', err);
+                const errorEmbed = new EmbedBuilder()
+                    .setColor('#E74C3C')
+                    .setTitle('Error Setting Up Mute Roles')
+                    .setDescription('There was an error setting up the mute roles. Please try again later.');
+                await interaction.followUp({ embeds: [errorEmbed] });
             }
         }
     },
